@@ -1,0 +1,112 @@
+				TODO
+				====
+
+Warning to those who aren't me: this is an unorganized list of things
+that might be classified as bugs, improvements, random thoughts or
+suggestions.  Hopefully it will get cleaned up over time (yeah,
+right!).
+
+Bryan Stansell
+
+---------------------------------------------------------------------------
+
+- Telnet protocol should be improved
+    - Not even RFC 854 compliant...or maybe it is (as of 8.1.0)
+    - Option negotiation semi-ignored - should we negotiate anything more?
+    - Others?
+
+- syslog?
+    Daniel E. Singer <des@cs.duke.edu> would like to see it - especially
+    in regards to --use-libwrap code
+
+- alternate (md5) password encryption support in conserver.passwd
+    - actually happens if the crypt() call supports it, like under linux
+    - hpux has bigcrypt() also, which we support, so maybe we're covered
+
+- config file examples for various configurations
+    - sample conserver.cf has some...but it's not explained well
+
+- per-line timestamps
+    - only when not connected?
+
+- pipe input/output (console <-> program) via 'console'
+    - some apps (net-ups thing, gdb) might need to talk to user
+    - ^Ec| does this, but the interact with user bits might not work
+    - actually, ^Ec| does work right with 8.1.0...one change that might
+      be nice is the ability to NOT watch the i/o pass to the local
+      command - try sending a big file to the local host with xmodem.
+
+- autologout?  setting per console?  gack, would have to interpret data.
+    - this will never happen...i don't want to interpret data
+
+- "listen" capability (watch all/multiple consoles)
+
+- send data to multiple consoles (carbon copy) -
+    Steve Lammert <slammert@panasas.com>
+
+- authentication to terminal servers (ssh, passphrase, whatever)
+    - ssh should probably just be handled by invoking the ssh command.
+      so, that's really already covered, no?
+    - passphrase...hmmm..could really use some sort of send/expect
+      thing here.  you could write a wrapper script of sorts, but it
+      really would be nice to have a raw socket and do the right thing.
+    - this does work, using the 'initcmd' option, so, all done?
+
+- cyclades ts1000/2000 port : "Moses, Joel" <jmoses@deloitte.com>
+
+- strftime() idea for logfile names : Lars Kellogg-Stedman <lars@larsshack.org>
+
+- 9600baud log replay?
+
+- server -M flag should accept multiple addresses (comma separated)
+    - should client as well?
+    - this may never happen...does anyone really need it?
+
+- automatic log rotation in general : Egan Ford <egan@us.ibm.com>
+
+- website docs on serial port configs
+    - PCs (solaris x86, linux, *bsd, etc)
+    - lilo
+    - bios support
+
+- suggestions by Trevor Fiatal <trevor@seven.com>
+    - include server hostname on 'console -x' output
+	- i think the -i output covers it, but maybe not
+
+- ability to configure strings to be sent to a console periodically :
+  Greg A. Woods <woods@planix.com>
+
+- show attach/detach events to/of spy console clients : Greg A. Woods
+  <woods@planix.com>
+
+- redefine client escape sequence in conserver.cf : Toby Gerhart
+  <toby.gerhart@eds.com>
+    - not even sure if this is possible w/o confusing the client,
+      but maybe with the new 8.1.0 client-server protocol, we can!
+
+- log rotation by date : Tom Pachla <tom.pachla@nlc-bnc.ca>
+
+- strict file permission checks on conserver.passwd/conserver.cf : Erik
+  Sjolund <erik.sjolund@sbc.su.se>
+
+- netgroup support?  : Nikolaos Papavassiliou
+  <Nikolaos.Papavassiliou@reuters.com> and Phil Dibowitz <phil@usc.edu>
+
+- send sequences to console on client connect? (to repaint screen,
+  for example) : John Cagle <jcagle@gmail.com>
+
+- uucp locks : Sebastian Zagrodzki <sebek@heron.net.icm.edu.pl>
+
+- support more than 9 break sequences : Danish Mirza <Danish@lehman.com>
+  thought it was easy, but adding more than could break things with
+  current encoding.  doable, will have to think harder about it.
+
+- reintroduce console grouping : Martin Turba
+  <martin.turba@igd.fraunhofer.de>
+
+- quick-recheck of down consoles (for uds) and possibly only log state
+  changes (instead of each try) : DJ Gregor <dj@gregor.com>
+
+#
+#  $Id: TODO,v 1.56 2006/04/03 22:20:34 bryan Exp $
+#

@@ -1,0 +1,190 @@
+
+				Conserver FAQ
+				=============
+
+This is the Conserver FAQ.  Any suggestions/corrections/etc should be
+directed to faq@conserver.com.  The FAQ answers the following questions:
+
+    1) What is conserver?
+    2) Where can I find the software?
+    3) How do I deal with these serial ports?
+    4) How can I tell what compile-time defaults were used?
+    5) What does "conserver: getservbyname: conserver: No such file or
+       directory" mean (or something close to that)?
+    6) What does "console: gethostbyname: console: host lookup error"
+       mean (or something close to that)?
+    7) How do I set up a serial port for no parity?
+    8) Is "Conserver" a Trademark or Registered Trademark?
+    9) When I connect to a console, it says it is down.  Why?
+   10) Is there a technical reason why --with-maxmemb's default is 16?
+       I've changed mine to 96.
+   99) OK, things just don't seem to work.  Help?!?
+
+
+ 1) What is conserver?
+
+    From an email I quickly wrote to a potential user (I'll try and
+    clean it up and make it a little clearer sometime soon):
+
+    Conserver is an application that allows multiple users to watch a
+    serial console at the same time.  It can log the data, allows users
+    to take write-access of a console (one at a time), and has a
+    variety of bells and whistles to accentuate that basic
+    functionality.  The idea is that conserver will log all your serial
+    traffic so you can go back and review why something crashed, look
+    at changes (if done on the console), or tie the console logs into a
+    monitoring system (just watch the logfiles it creates).  With
+    multi-user capabilities you can work on equipment with others,
+    mentor, train, etc.  It also does all that client-server stuff so
+    that, assuming you have a network connection, you can interact with
+    any of the equipment from home or wherever.
+
+ 2) Where can I find the software?
+
+    The latest version can be found at http://www.conserver.com/
+
+ 3) How do I wire/hook up serial ports?
+
+    David "Zonker" Harris has a wonderful set of pages that talk about
+    hooking up many types of terminal servers, equipment, etc.  It also
+    provides links to other serial port references.  You can find his
+    pages at http://www.conserver.com/consoles/.
+
+    Celeste Stokely also has a wealth of references at
+    http://www.stokely.com/.  Just look around and be amazed at what
+    you'll find!
+
+ 4) How can I tell what compile-time defaults were used?
+
+    The compile-time defaults can be found by running conserver and
+    console with the -V flag.  Simple as that.
+
+ 5) What does "conserver: getservbyname: conserver: No such file or
+    directory" mean (or something close to that)?
+
+    When conserver was compiled, it was told to use the /etc/services
+    entry of "conserver" (what came after getservbyname:).  You'll need
+    to either recompile conserver and hard-code a port number (using
+    --with-port=<num>) or enter "conserver" in /etc/services.
+
+ 6) What does "console: gethostbyname: console: host lookup error"
+    mean (or something close to that)?
+
+    When the console command was compiled, it was told to use the
+    hostname "console" (what came after gethostbyname:) as the master
+    conserver host.  You'll need to either reconfigure with the
+    appropriate name of your conserver host (--with-master=<name>) or
+    add an alias of "console".  In most cases, adding an alias is my
+    suggestion.
+
+ 7) How do I set up a local serial port for no parity?
+
+    The manpage has the answer to this question.  For those that don't
+    want to read it, here are some guidelines.  For pre-7.2.2, you'd
+    want to use a 'p' after the baud rate ("9600p", for example).  For
+    7.2.2 thru 7.2.7, you can use an 'n'.  For 8.0.0 and beyond, you use
+    'parity none;'.
+
+ 8) Is "Conserver" a trademark or registered trademark?
+
+    The best answer I can give is "not as far as I know".  A couple of
+    quick searches through the source code doesn't find any claim of a
+    trademark.  I've never done a registered trademark search, but if
+    it had been registered (by a previous author), I'm sure it would be
+    mentioned.  But I'm no lawyer and don't deal with these types of
+    things, so I'm not exactly sure what I'm taking about and my answer
+    becomes a very vague "not as far as I know".
+
+ 9) When I connect to a console, it says it is down.  Why?
+
+    There are multiple reasons why this might happen.  First, see if it's
+    just a remnant of some other temporary problem.  Try and bring the
+    console up by doing a '^Eco' from the client.  If that doesn't work,
+    there's a more serious problem which, hopefully, the conserver logfile
+    will explain.  Check the log for any permission problems, connection
+    refused messages, etc.  You might get more useful information in
+    the log by using the -v option or even by enabling debugging with
+    -D (ideally that shouldn't be necessary).  Depending on the type of
+    console, your system might be out of pseudo-terminals, another process
+    might have a terminal server port occupied (another console server or
+    telnet session), or there was an unseen typo in a path or hostname.
+    The logfile should show hints of things like this and other issues.
+
+10) Is there a technical reason why --with-maxmemb's default is 16?
+    I've changed mine to 96.
+
+    The following is an array of things you need to think about when
+    adjusting --with-maxmemb.  It's a bit long, but it's an important
+    question.
+
+    The big reason (and the main reason for conserver spawning multiple
+    processes) is the maximum number of open files a process can have.
+    Each console can have a few file descriptors associated with it
+    (device, logfile, connected users, and listening socket).  So, each
+    process will have about ( 2 * consoles + users + 1 ) open files
+    (--with-maxmemb sets the maximum number of consoles per process
+    in the equation).  Although most current operating systems allow a
+    large number of open files per process, the general assumption is
+    it's still pretty low.
+
+    You also have the speed of your conserver host vs the rates at which
+    data could be streaming to it.  Go back a decade and this was probably
+    more of an issue than today, but it's still something to think about.
+
+    And then you have the problem of delays.  If any of the 96 console
+    connections "lock up", it'll delay all activity on the 96 consoles.
+    With 16, there's less of an impact.  This can be an issue once the
+    server is up or during startup.  Also, with 16 consoles per process,
+    you get a bit more parallelization during startup.
+
+    So, is there any reason not to up the number to 96?  No.  Assuming you
+    know the risks and weigh things appropriately.  If I remember right,
+    I've upped the number to 48 at some sites.  But that was mainly to
+    reduce the memory footprint in older versions of the code which had
+    statically allocated buffers.  No need to worry about that with the
+    current code.  Personally, I wouldn't change from 16 unless there
+    was a really good reason (like wanting to only have one child process
+    for firewall rules or some such reason).
+
+99) OK, things just don't seem to work.  Help?!?
+
+    Yes, this is a pretty vague question, but here are a few tips that
+    might help.
+
+    - Is your low-level serial connection correct?  Incorrect cables,
+      adapters, wiring, etc. could be the issue.  Using a signal tracer
+      or attaching other equipment that's known to work (like a laptop)
+      might be enlightening.  Check out
+      http://www.conserver.com/consoles/msock.html for basic serial
+      information (or http://www.conserver.com/consoles/ for even more
+      info).
+
+    - Can you talk to the serial port with different software?  Try
+      using tip or minicom or another application to make sure you can
+      interact with the port.  If you're not seeing the right info
+      here, there may be a baud rate issue, a lack of a getty (or
+      equivalent) running on the host or...*shrug*.  But, if you've
+      determined that you already have a valid low-level signal
+      connection, you shouldn't have to worry about that level of
+      problem.
+
+    - So, you're getting the proper interaction from other
+      applications, but not conserver?  Are the port name and baud rate
+      correct in the conserver.cf file?  When you start conserver
+      (adding -v doesn't hurt), are there any warnings/errors?  Is the
+      port in the "up" state when you use "console -u"?  If not, what
+      happens when you connect and then do a "^eco" escape sequence to
+      bring it up?  What does the conserver process say when you do
+      this?  These are the types of things I look at first.  If that
+      doesn't help you determine the problem, others will want to see
+      this info (and possibly the same steps with both the client and
+      server using the -D option) to be able to help.  Posting your
+      questions to the users mailing list is probably your next step.
+
+    - Have you tried a search on the conserver site (it searches
+      mailing list traffic as well) to see if someone else has gone
+      through the same problem?
+
+#
+#  $Id: FAQ,v 1.9 2003/08/23 19:27:10 bryan Exp $
+#

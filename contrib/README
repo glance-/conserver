@@ -1,0 +1,28 @@
+Various contributions by folks....
+
+    chat
+        Author:   Greg Woods <woods@weird.com>
+	Synopsis: A send/expect program...source code from the NetBSD
+		  distribution and modified by Greg Woods to work
+		  a bit better with conserver
+
+    solaris-package
+	Author:   Michael Sullivan <mike@trdlnk.com>
+	Synopsis: Creates a solaris package
+
+    redhat-rpm
+	Author:   Paul Heinlein <heinlein@measurecast.com>
+	Synopsis: Files for a Redhat-tuned RPM
+
+    maketestcerts
+	Author:   Bryan Stansell <bryan@conserver.com>
+	Synopsis: Silly script I used to create test SSL certs
+
+I can't verify that these scripts will work for everyone.  Hopefully they
+will be helpful.
+
+Bryan Stansell
+
+#
+#  $Id: README,v 1.4 2003/09/29 14:29:37 bryan Exp $
+#

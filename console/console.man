@@ -1,0 +1,1019 @@
+.\" $Id: console.man,v 1.61 2006/04/03 13:32:12 bryan Exp $
+.TH CONSOLE 1 "2006/04/03" "conserver-8.1.18" "conserver"
+.SH NAME
+console \- console server client program
+.SH SYNOPSIS
+.B console
+.RI [ generic-args ]
+.RB [ \-aAfFsS ]
+.BR [ \-e
+.IR esc ]
+.I console
+.br
+.B console
+.RI [ generic-args ]
+.RB [ \-iIuwWx ]
+.RI [ console ]
+.br
+.B console
+.RI [ generic-args ]
+.RB [ \-hPqQrRV ]
+.RB [ \- [ bB ]
+.IR message ]
+.RB [ \-d
+.RI [ user ][\f3@\fP console ]]
+.RB [ \-t
+.RI [ user ][\f3@\fP console ]
+.IR message ]
+.RB [ \- [ zZ ]
+.IR cmd ]
+.PP
+.IR generic-args :
+.RB [ \-7DEnUv ]
+.RB [ \-c
+.IR cred ]
+.RB [ \-C
+.IR config ]
+.BR [ \-M
+.IR master ]
+.BR [ \-p
+.IR port ]
+.BR [ \-l
+.IR user ]
+.SH DESCRIPTION
+.B Console
+is used to manipulate console terminals remotely or to poll running
+.BR conserver (8)
+daemons for status information.
+.PP
+In the first form above,
+.B console
+asks the user's password before
+granting interactive access to a console (on a non-trusted system),
+since such a session may provide single-user access.
+If the server's autocompletion feature is enabled,
+only as much of the console name as is required to
+identify it uniquely to the server is required.
+.PP
+For non-interactive options,
+.B console
+outputs only the requested information and exits.
+.PP
+.B Console
+knows only of a primary
+.B conserver
+host (see the
+.B \-M
+option below), to which it initially connects.
+In a multi-server environment, the primary server may refer
+the client to a different server handling the requested console,
+or it will provide a list of all servers if required (as when
+.B console
+is invoked with the
+.B \-r
+option).
+.B Console
+then opens connections to the appropriate server(s).
+It is not necessary for the user of
+.B console
+to know which server manages which consoles, as long as
+.B console
+knows a valid primary server
+and all available consoles are listed in the primary server's
+configuration file.
+.SH OPTIONS
+.PP
+Options may be given as separate arguments (e.g.,
+.B \-v
+.BR \-w )
+or clustered (e.g.,
+.BR \-vw ).
+Options and their arguments may be separated by optional white space.
+Option arguments containing spaces or other characters special to the shell
+must be quoted.
+.TP 11
+.B \-7
+Strip the high bit off of all data received, whether from user
+input or from the server, before any processing occurs.
+Disallows escape sequence characters with the high bit set.
+.TP
+.B \-a
+Access a console with a two-way (read-write) connection (this is the default).
+The connection is dropped to spy mode if someone else is attached read-write.
+.TP
+.BI \-b message
+Broadcast a
+.I message
+to all users connected to each server.
+.TP
+.BI \-B message
+Same as
+.B \-b
+but just send a
+.I message
+to users on the primary server.
+.TP
+.BI \-c cred
+Load an SSL certificate and key from the PEM encoded file
+.IR cred .
+.TP
+.BI \-C config
+Use the per-user configuration file
+.IR config .
+.TP
+.B \-d
+Disconnect the users specified by
+.IR user @ console .
+You may specify the target as
+.I user
+(disconnect the
+.IR user,
+regardless of what console they are attached to),
+.RI @ console
+(disconnect all users attached to
+.IR console ),
+or
+.IR user @ console
+(disconnect the
+.I user
+attached to
+.IR console ).
+.TP
+.B \-D
+Enable debugging output.
+.TP
+.BI \-e esc
+Set the initial two-character escape sequence to those represented by
+.IR esc .
+Any of the forms output by
+.BR cat (1)'s
+.B \-v
+option are accepted.
+The default value is
+.RB `` ^Ec ''.
+.TP
+.B \-E
+If encryption has been built into the code
+.RB ( --with-openssl ),
+encrypted client connections are, by default, a requirement.
+This option disables any attempt at creating an
+encrypted connection.
+If you'd like to use encrypted connections when your server
+supports it, but fallback to non-encrypted otherwise, the
+.B \-U
+option is what you want.
+.TP
+.B \-f
+Same as
+.B \-a
+except it will force any existing connection into spy mode.
+.TP
+.B \-h
+Display a brief help message.
+.TP
+.B \-i
+Display status information in a machine-parseable format (see below for the details).
+.TP
+.B \-I
+Same as
+.B \-i
+but just acts on the primary server.
+.TP
+.BI \-l user
+Set the login name used for authentication to
+.IR user .
+By default,
+.B console
+uses $USER if its uid matches the user's real uid,
+or $LOGNAME if its uid matches the user's real uid,
+or else the name associated with the user's real uid.
+.TP
+.BI \-M master
+The
+.B console
+client program polls
+.I master
+as the primary server,
+rather than the default set at compile time (typically
+.RB `` console '').
+The default
+.I master
+may be changed at compile time using the
+.B --with-master
+option.
+If
+.B --with-uds
+is used to enable Unix domain sockets, however, this option points
+.B console
+to the directory which holds those sockets.
+The default
+.I master
+directory
+.RB (`` /tmp/conserver '')
+may be changed at compile time using the
+.B --with-uds
+option.
+.TP
+.BI \-n
+Do not read the system-wide configuration file.
+.TP
+.BI \-p port
+Set the port to connect to.
+This may be either a port number
+or a service name.
+The default
+.I port
+may be changed at compile time
+using the
+.B --with-port
+option.
+If the
+.B --with-uds
+option was used, this option is ignored.
+.TP
+.B \-P
+Display the pid of the master daemon process on each server.
+.TP
+.B \-q
+The
+.B console
+client connects to each server to request that the
+server daemon quit (shut down).
+The root password of the host(s) running conserver is required
+unless the local host is listed as ``trusted'' in the
+conserver.cf file; in that case, just press <return>.
+.TP
+.B \-Q
+Same as
+.B \-q
+but just acts on the primary server.
+.TP
+.B \-r
+Display daemon versions.
+The
+.B console
+client connects to each
+server to request its version information.
+.TP
+.B \-R
+Same as
+.B \-r
+but just acts on the primary server.
+.TP
+.B \-s
+Request a read-only (spy mode) connection.
+In this mode all the escape sequences (below) work, or report errors,
+but all other keyboard input is discarded.
+.TP
+.B \-t
+Send a text
+.I message
+to
+.IR user @ console .
+You may specify the target as
+.I user
+(send to
+.IR user,
+regardless of what console they are attached to),
+.RI @ console
+(send to all users attached to
+.IR console ),
+or
+.IR user @ console
+(send to
+.I user
+attached to
+.IR console ).
+.TP
+.B \-u
+Show a list of all consoles with status (`up', `down', or `init')
+and attached users
+.RI ( user @ host
+if attached read-write, `<spies>' if only users in spy mode, or `<none>').
+.TP
+.B \-U
+If encryption has been built into the code
+.RB ( --with-openssl ),
+encrypted client connections are, by default, a requirement.
+This option allows the client to attempt an encrypted connection
+but fall back to a non-encrypted connection if the server doesn't
+support encryption.
+If the encryption handshake is failing, disabling encryption on the
+client with the
+.B \-E
+option is probably what you want.
+.TP
+.B \-v
+Be more verbose when building the connection(s).
+Use this option in combination with any of `show' options (below)
+for added benefit.
+.TP
+.B \-V
+Output the version and settings of the console client program
+and then exit.
+.TP
+.B \-w
+Show a list of all who are currently connected to consoles,
+including the hostnames where the
+.B console
+connections originate and the idle times.
+This is useful to see if anybody is actively
+using the console system if it becomes necessary to shut down
+.BR conserver .
+.TP
+.B \-W
+Same as
+.B \-w
+but just acts on the primary server.
+.TP
+.B \-x
+Show a list of consoles and devices.
+.TP
+.BI \-z cmd
+Sends a command
+.RI ( cmd )
+to each server and displays the result.
+The valid commands are:
+.RS
+.sp
+.PD 0
+.TP 12
+.B bringup
+Try to connect all consoles marked as down (this is equivalent
+to sending the server a SIGUSR1)
+.TP
+.B SIGUSR1
+Same as
+.B bringup
+.TP
+.B help
+Displays the help message
+.TP
+.B pid
+Returns the pid of the server (this is equivalent to
+.BR \-P )
+.TP
+.B quit
+Instructs the server to shut down (this is equivalent to
+.B \-q
+or sending the server a SIGTERM)
+.TP
+.B SIGTERM
+Same as
+.B quit
+.TP
+.B reconfig
+Instructs the server to reload the configuration file, then
+perform the actions of
+.B reopen
+(this is equivalent to sending the server a SIGHUP)
+.TP
+.B SIGHUP
+Same as
+.B reconfig
+.TP
+.B reopen
+Instructs the server to reopen all logfiles, then
+perform the actions of
+.B bringup
+(this is equivalent to sending the server a SIGUSR2)
+.TP
+.B SIGUSR2
+Same as
+.B reopen
+.TP
+.B version
+Returns the version of the server (this is equivalent to
+.BR \-V )
+.PD
+.RE
+.TP
+.BI \-Z cmd
+Same as
+.B \-z
+but just sends
+.I cmd
+to the primary server.
+.PP
+The
+.BR \-A ,
+.BR \-F ", or"
+.B \-S
+options have the same effect as their lower-case variants.
+In addition, they each request the last 20 lines of the console output after
+making the connection (as if
+.RB `` ^Ecr ''
+were typed).
+.PP
+The
+.BR \-i ,
+.BR \-u ,
+.BR \-w ", and"
+.B \-x
+options can be given a console name, which will limit their output to that console.
+.PP
+The
+.B \-i
+option outputs status information regarding each console in 15 colon-separated fields.
+.TP
+.I name
+The name of the console.
+.TP
+.I hostname,pid,socket
+The hostname, pid, and socket number of the child process managing
+the console.
+.TP
+.I type
+The type of console.
+Values will be a `/' for a local device, `|' for
+a command, `!' for a remote port, `%' for a Unix domain socket,
+and `#' for a noop console.
+.TP
+.I console-details
+The details regarding the console.
+The values here (all comma-separated) depend on the type of the console.
+Local devices will have values of the device file, baud rate/parity, and
+file descriptor for the device.
+Commands will have values of the command, the command's pid, the
+pseudo-tty, and file descriptor for the pseudo-tty.
+Remote ports will have values of the remote hostname, remote port number,
+``raw'' or ``telnet'' protocol, and file descriptor for the socket connection.
+Unix domain sockets will have the path to the socket and the file
+descriptor for the socket connection.
+Noop consoles will have nothing.
+.TP
+.I users-list
+The details of each user connected to the console.
+The details for each
+user are an `@' separated list of `w', `r', or `s' (for read-write, read-only,
+or suspended), username, hostname the user is on, the user's idle time,
+and (for `r' and `s' users only) ``rw'' or ``ro'' (if the user wants
+read-write mode or not).
+Each user bundle is separated by commas.
+.TP
+.I state
+The state of the console.
+Values with either be ``up'', ``down'', or ``init''.
+.TP
+.I perm
+This value will either be ``rw'' or ``ro''.
+It will only be ``ro'' if
+the console is a local device (`/' type) and the permissions are such
+that the server can open the file for read, but not write.
+.TP
+.I logfile-details
+The details regarding the logging for the console.
+The comma-separated
+values will be the logfile, ``log'' or ``nolog'' (if logging is on
+or not - toggled via ``^EcL''), ``act'' or ``noact'' (if activity logging is
+enabled or not - the `a' timestamp option), the timestamp interval, and
+the file descriptor of the logfile.
+.TP
+.I break
+The default break sequence used for the console.
+.TP
+.I reup
+If the console is currently down and the automatic reconnection code
+is at work, it will have the value of ``autoup'', otherwise it
+will be ``noautoup''.
+.TP
+.I aliases
+The console aliases are presented in a comma-separated list.
+.TP
+.I options
+The active options for the console are presented in a comma-separated list.
+.TP
+.I initcmd
+The initcmd configuration option for the console.
+.TP
+.I idletimeout
+The idletimeout configuration option for the console.
+.TP
+.I idlestring
+The idlestring configuration option for the console.
+.SH CONFIGURATION
+.B Console
+reads configuration information from the system-wide configuration file
+.RB ( console.cf ),
+then the per-user configuration file
+.RB ( .consolerc ),
+and then applies command-line arguments.
+Each configuration location can override the previous.
+The same happens when parsing an individual file - the later entries
+always override the earlier entries.
+Because of that, you should put ``global'' defaults first and
+more specific defaults second.
+.PP
+The configuration file is read using the same parser as 
+.BR conserver.cf (5),
+and you should check that manpage for parser details.
+.B Console
+recognizes the following configuration blocks.
+.TP
+\f3config\fP \f2hostname\fP|\f2ipaddr\fP
+.br
+Define a configuration block for the client host named
+.I hostname
+or using the address
+.IR ipaddr .
+If the value of ``*'' is used, the configuration block will be applied to
+all client hosts.
+.RS
+.TP
+\f3escape\fP \f2esc\fP
+.br
+Set the escape sequence (see the
+.B \-e
+command-line flag).
+.TP
+\f3master\fP \f2master\fP
+.br
+Set the default master to
+.I master
+(see the
+.B \-M
+command-line flag).
+.TP
+\f3playback\fP \f2num\fP|\f3""\fP
+.br
+Override the playback length for the
+.B p
+escape command to
+.I num
+lines (if the server supports it).
+Using the special value of ``0'' will cause the client to use the number
+of lines of the current terminal (if that can be determined).
+If the null string (``""'') is used, the playback length will not be overridden.
+.TP
+\f3port\fP \f2port\fP
+.br
+Set the default port to
+.I port
+(see the
+.B \-p
+command-line flag).
+.TP
+\f3replay\fP \f2num\fP|\f3""\fP
+.br
+Override the replay length for the
+.B r
+escape command to
+.I num
+lines (if the server supports it).
+Using the special value of ``0'' will cause the client to use the number
+of lines of the current terminal (if that can be determined).
+If the null string (``""'') is used, the replay length will not be overridden.
+.TP
+\f3sslcredentials\fP \f2filename\fP
+.br
+Set the
+.SM SSL
+credentials file location (see the
+.B \-c
+command-line flag).
+.TP
+\f3sslenabled\fP \f3yes\fP|\f3true\fP|\f3on\fP|\f3no\fP|\f3false\fP|\f3off\fP
+.br
+Set whether or not encryption is attempted when talking to servers (see the
+.B \-E
+command-line flag).
+.TP
+\f3sslrequired\fP \f3yes\fP|\f3true\fP|\f3on\fP|\f3no\fP|\f3false\fP|\f3off\fP
+.br
+Set whether or not encryption is required when talking to servers (see the
+.B \-U
+command-line flag).
+.TP
+\f3striphigh\fP \f3yes\fP|\f3true\fP|\f3on\fP|\f3no\fP|\f3false\fP|\f3off\fP
+.br
+Set whether or not to strip the high bit off all data received
+(see the
+.B \-7
+command-line flag).
+.TP
+\f3username\fP \f2user\fP
+.br
+Set the username passed to the server to
+.I user
+(see the
+.B \-l
+command-line flag).
+.RE
+.TP
+\f3terminal\fP \f2type\fP
+.br
+Define a configuration block when using a terminal of type
+.IR type .
+If the value of ``*'' is used, the configuration block will be applied to
+all terminal types.
+.RS
+.TP
+\f3attach\fP \f2string\fP|\f3""\fP
+.br
+Set a
+.I string
+to print when successfully attached to a console.
+Character substitions will be performed based on the
+.B attachsubst
+value and occur
+.I before
+interpretation of the special characters below.
+If the null string (``\f3""\fP'') is used, no string will be printed.
+.I string
+is a simple character string with the exception of `\e'
+and `^':
+.RS
+.RS
+.sp
+.PD 0
+.TP 6
+.B \ea
+alert
+.TP
+.B \eb
+backspace
+.TP
+.B \ef
+form-feed
+.TP
+.B \en
+newline
+.TP
+.B \er
+carriage-return
+.TP
+.B \et
+tab
+.TP
+.B \ev
+vertical-tab
+.TP
+.B \e\e
+backslash
+.TP
+.B \e^
+circumflex
+.TP
+.BI \e ooo
+octal representation of a character (where
+.I ooo
+is one to three octal digits)
+.TP
+.BI \e c
+character
+.I c
+.TP
+.B ^?
+delete
+.TP
+.BI ^ c
+control character
+.RI ( c
+is ``and''ed with 0x1f)
+.PD
+.RE
+.RE
+.IP
+An interesting use of
+.B attach
+and
+.B attachsubst
+would be:
+.RS
+.IP
+.ft CR
+.nf
+terminal xterm {
+    attach "^[]0;conserver: U@C^G";
+    attachsubst U=us,C=cs;
+}
+.fi
+.ft
+.RE
+.TP
+\f3attachsubst\fP \f2c\fP\f3=\fP\f2t\fP[\f2n\fP]\f2f\fP[\f3,\fP...]|\f3""\fP
+.br
+Perform character substitutions on the
+.B attach
+value.
+A series of replacements can be defined by specifying a
+comma-separated list of
+\f2c\fP\f3=\fP\f2t\fP[\f2n\fP]\f2f\fP
+sequences where
+.I c
+is any printable character,
+.I t
+specifies the replacement value,
+.I n
+is a field length (optional),
+and
+.I f
+is the format string.
+.I t
+can be one of the characters below, catagorized as a string replacement
+or a numeric replacement, which dictates the use of the
+.I n
+and
+.I f
+fields.
+.RS
+.RS
+.sp
+.PD 0
+.TP
+String Replacement
+.TP
+.B u
+username
+.TP
+.B c
+console name
+.sp
+.PP
+Numeric Replacement
+.TP
+none available (yet)
+.PD
+.RE
+.RE
+.IP
+For string replacements, if the replacement isn't at least
+.I n
+characters, it will be padded with space characters on the left.
+.I f
+must be `s'.
+For numeric replacements, the value will be formatted to at least
+.I n
+characters, padded with 0s if
+.I n
+begins with a 0, and space characters otherwise.
+.I f
+must be either `d', `x' or `X', specifying a decimal, lower-case
+hexadecimal, or an uppercase hexadecimal conversion.
+If the null string (``\f3""\fP'') is used, no replacements will be done.
+.TP
+\f3detach\fP \f2string\fP|\f3""\fP
+.br
+Set a
+.I string
+to print once detached from a console.
+Character substitions will be performed based on the
+.B detachsubst
+value.
+See the
+.B attach
+option for an explanation of
+.IR string .
+If the null string (``\f3""\fP'') is used, no string will be printed.
+.TP
+\f3detachsubst\fP \f2c\fP\f3=\fP\f2t\fP[\f2n\fP]\f2f\fP[\f3,\fP...]|\f3""\fP
+.br
+Perform character substitutions on the
+.B detach
+value.
+See the
+.B attachsubst
+option for an explanation of the format string.
+.RE
+.PP
+A simple configuration to set a new default escape sequence and override
+the master location would be:
+.IP
+.ft CR
+.nf
+# override options for all hosts
+config * {
+    master localhost;
+    escape ^Ee;
+}
+# set things more specific to host1
+# note: if the entries were reversed, host1
+# would also use localhost.
+config host1 {
+    master console1;
+}
+.fi
+.ft
+.SH "ESCAPE SEQUENCES"
+The connection can be controlled by a two-character escape sequence, followed
+by a command.
+The default escape sequence is ``control-E c''
+(octal 005 143).
+(The escape sequences are actually processed by the server; see the
+.BR conserver (8)
+man page for more information.)
+Commands are:
+.sp
+.PD 0
+.TP 13
+.B \.
+disconnect
+.TP
+.B ;
+move to another console
+.TP
+.B a
+attach read-write if nobody already is
+.TP
+.B b
+send broadcast message to all users on this console
+.TP
+.B c
+toggle flow control (don't do this)
+.TP
+.B d
+down the current console
+.TP
+.BI e cc
+change the escape sequence to the next two characters
+.TP
+.B f
+forcibly attach read-write
+.TP
+.B g
+group info
+.TP
+.B i
+information dump
+.TP
+.B L
+toggle logging on/off
+.TP
+.B l?
+list the break sequences available
+.TP
+.B l0
+send the break sequence associated with this console
+.TP
+.B l1-9
+send the specific break sequence
+.TP
+.B m
+display the "message of the day"
+.TP
+.B o
+close (if open) and reopen the line (to clear errors (silo overflows))
+and the log file
+.TP
+.B p
+playback the last 60 lines of output
+.TP
+.B P
+set number of playback lines
+.TP
+.B r
+replay the last 20 lines of output
+.TP
+.B R
+set number of replay lines
+.TP
+.B s
+switch to spy mode (read-only)
+.TP
+.B u
+show status of hosts/users in this group
+.TP
+.B v
+show the version of the group server
+.TP
+.B w
+who is using this console
+.TP
+.B x
+examine this group's devices and modes
+.TP
+.B z
+suspend this connection
+.TP
+.B |
+attach a local command to the console
+.TP
+.B ?
+display list of commands
+.TP
+.BR ^M " (return)"
+continue, ignore the escape sequence
+.TP
+.BR ^R " (ctrl-R)"
+replay the last line only
+.TP
+.BI \e ooo
+send character having octal code
+.IR ooo " (must"
+specify three octal digits)
+.PD
+.PP
+If any other character is hit after the escape sequence, all three characters
+will be discarded.
+Note that a line break or a down command
+can only be sent from a read-write connection.
+To send the escape sequence through the connection one must redefine
+the outer escape sequence, or use
+.BI ^Ec\e ooo
+to send the
+first escape character before typing the second character directly.
+.PP
+In the
+.B \-u
+output, the login ``<none>'' indicates no one is
+viewing that console, and the login ``<spies>'' indicates that
+no one has a read-write connection (only read-only).
+.PP
+When running a local command via
+.RB `` ^Ec| '',
+you can type 
+.RB ` ^C '
+to send the command a SIGHUP,
+.RB ` ^\e '
+to send the command a SIGKILL, and
+.RB ` o '
+to toggle the display of the console data.
+.SH EXAMPLES
+.TP 15
+console \-u
+Outputs something like:
+.IP
+.ft CR
+.nf
+dumb      up      <none>
+expert    up      ksb@mentor
+tyro      up      <spies>
+mentor    up      <none>
+sage      up      fine@cis
+.fi
+.ft
+.IP
+The
+.B <none>
+indicates no one is viewing
+.IR dumb
+or
+.IR mentor ,
+the
+.B <spies>
+indicates only read-only connections exist for
+.IR tyro ,
+and other
+.IR login @ host
+entries indicate users attached read-write to
+.I sage
+and
+.IR expert .
+.TP
+console \-w
+Outputs something like:
+.IP
+.ft CR
+.nf
+ksb@extra       attach  2days     expert
+file@cis        attach  21:46     sage
+dmr@alice       spy     \00:04     tyro
+.fi
+.ft
+.IP
+The third column is the idle time of the user.
+Either
+.IR hours : minutes
+or number of days is displayed.
+.TP
+console \-e "^[1" lv426
+Requests a connection to the host ``lv426'' with the escape characters
+set to ``escape one''.
+.SH FILES
+.PP
+The following default file locations may be overridden
+at compile time or by the command-line options described above.
+Run
+.B console \-V
+to see the defaults set at compile time.
+.PP
+.PD 0
+.TP 25
+.B /etc/console.cf
+system-wide configuration file
+.TP
+.B \s-1$HOME\s0/.consolerc
+per-user configuration file
+.PD
+.SH BUGS
+It is possible to create a loop of console connections, with ugly results.
+Never run
+.B console
+from within a console connection (unless you set each
+escape sequence differently).
+.PP
+The \-i output can produce more than the stated number of fields of
+information if the user-provided information has embedded colons.
+.PP
+I'm sure there are more, I just don't know where they are.
+Please let me know if you find any.
+.SH AUTHORS
+Thomas A. Fine, Ohio State Computer Science
+.br
+Kevin Braunsdorf, Purdue University Computing Center
+.br
+Bryan Stansell, conserver.com
+.SH "SEE ALSO"
+.BR conserver.cf (5),
+.BR conserver.passwd (5),
+.BR conserver (8)

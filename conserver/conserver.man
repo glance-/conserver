@@ -1,0 +1,516 @@
+.\" @(#)conserver.8 01/06/91 OSU CIS; Thomas A. Fine
+.\" $Id: conserver.man,v 1.54 2006/12/31 02:02:48 bryan Exp $
+.TH CONSERVER 8 "2006/12/31" "conserver-8.1.18" "conserver"
+.SH NAME
+conserver \- console server daemon
+.SH SYNOPSIS
+.B conserver
+.RB [ \-7dDEFhinoRSuvV ]
+.RB [ \-a
+.IR type ]
+.RB [ \-m
+.IR max ]
+.RB [ \-M
+.IR master ]
+.RB [ \-p
+.IR port ]
+.RB [ \-b
+.IR port ]
+.RB [ \-c
+.IR cred ]
+.RB [ \-C
+.IR config ]
+.RB [ \-P
+.IR passwd ]
+.RB [ \-L
+.IR logfile ]
+.RB [ \-O
+.IR min ]
+.RB [ \-U
+.IR logfile ]
+.SH DESCRIPTION
+.B Conserver
+is the daemon that manages
+remote access to system consoles by multiple users via the
+.BR console (1)
+client program and (optionally) log the console output.
+It can connect to consoles via local serial ports, Unix domain sockets, TCP
+sockets (for terminal servers and the like), or any external program.
+.PP
+When started,
+.B conserver
+reads the
+.BR conserver.cf (5)
+file for details of each console.
+The console type, logging options, serial or network parameters, and user access
+levels are just a few of the things that can be specified.
+Command-line options are then applied, possibly overriding
+.BR conserver.cf (5)
+settings.
+.B Conserver
+categorizes consoles into two types: those it should actively manage, and
+those it should just know about, so it can refer clients to other
+.B conserver
+instances.
+If the
+.B master
+value of a console matches the hostname or ip address of the local machine,
+.B conserver
+will actively manage the console.
+Otherwise, it's considered a ``remote'' console and managed by a different
+server.
+.B Conserver
+forks a child for each group of consoles it must manage
+and assigns each process a port number to listen on.
+The maximum number of consoles managed by each child process is set using the
+.B \-m
+option.
+The
+.BR console (1)
+client program communicates with the master console server process to find
+the port (and host, in a multi-server configuration)
+on which the appropriate child is listening.
+.B Conserver
+restricts connections from clients based on the host access section of its
+.BR conserver.cf (5)
+file, restricts users based on the console access lists of the
+.BR conserver.cf (5)
+file, and authenticates
+users against its
+.BR conserver.passwd (5)
+file.
+.B Conserver
+can also restrict clients using the tcp-wrappers package (enabled
+using
+.BR --with-libwrap ).
+This authentication is done before consulting
+the
+.BR conserver.cf (5)
+access list.
+.PP
+When Unix domain sockets are used between the client and
+server (enabled using
+.BR --with-uds ),
+authentication checks are done on the hardcoded address ``127.0.0.1''.
+Automatic client redirection is also disabled (as if the
+.B \-R
+option was used) since the client cannot communicate with remote servers.
+The directory used to hold the sockets is checked to make sure it's empty
+when the server starts.
+The server will
+.B not
+remove any files in the directory itself, just in case the directory is
+accidentally specified as ``/etc'' or some other critical location.
+The server will do its best to remove all the sockets when it shuts down,
+but it could stop ungracefully (crash, ``kill -9'', etc)
+and leave files behind.
+It would then be up to the admin (or a creative startup script) to clean
+up the directory before the server will start again.
+.PP
+.B Conserver
+completely controls any connection to a console.
+All escape sequences given by the user to
+.B console
+are passed to the server without interpretation.
+The server recognizes and processes all escape sequences.
+.PP
+The
+.B conserver
+parent process will automatically respawn any child process that dies.
+The following signals are propagated by the parent process to its children.
+.TP 10
+SIGTERM
+Close all connections and exit.
+.TP
+SIGHUP
+Reread the configuration file.
+New consoles are managed by forking off new children, deleted
+consoles (and their clients) are dropped,
+and changes to consoles are done "in place", resetting the console
+port (bringing it down and up) only when necessary.
+The console name is used to determine when consoles
+have been added/removed/changed.
+All actions performed by SIGUSR2 are also performed.
+.TP
+SIGUSR1
+Try to connect to any consoles marked as down.
+This can come in handy if you had a terminal server (or more)
+that wasn't accepting connections at startup and you want
+.B conserver
+to try to reconnect to all those downed ports.
+.TP
+SIGUSR2
+Close and reopen all console logfiles
+and, if in daemon mode
+.RB ( \-d
+option), the error logfile (see the
+.BR \-L
+option).
+All actions performed by SIGUSR1 are also performed.
+.PP
+Consoles which have no current client
+connection might produce important error messages.
+With the
+.B \-u
+option, these ``unloved'' errors are labeled with a machine name
+and output on stdout (or, in daemon mode, to the logfile).
+This allows a live operator or an automated log scanner
+to find otherwise unseen errors by watching in a single location.
+.PP
+.B Conserver
+must be run as root if it is to bind to a port under 1024 or if it
+must read protected password files (like shadow passwords)
+for authentication (see
+.BR conserver.passwd (5)).
+Otherwise, it may be run by any user, with
+.B \-p
+used to specify a port above 1024.
+.PP
+If encryption has been built into the code
+.RB ( --with-openssl ),
+encrypted client connections (without certificate exchanges) happen
+by default.
+To add certificate exchanges, use the
+.B \-c
+option with the client and server.
+For authentication of the certificates to work,
+the signing certificate must be properly trusted, which usually means
+the public portion is in
+.IB OPENSSL_ROOT /ssl/certs
+(on both the client and server sides).
+See the sample self-signing certificate making script
+.B contrib/maketestcerts
+for further clues.
+To allow
+non-encrypted client connections (in addition to encrypted client
+connections), use the
+.B \-E
+option.
+.SH OPTIONS
+.PP
+Options may be given as separate arguments (e.g.,
+.B \-n
+.BR \-d )
+or clustered (e.g.,
+.BR \-nd ).
+Options and their arguments may be separated by optional white space.
+Option arguments containing spaces or other characters special to the shell
+must be quoted.
+.TP 12
+.B \-7
+Strip the high bit off of all data received,
+whether from the
+.B console
+client or from the console device, before any processing occurs.
+.TP
+.BI \-a type
+Set the default access type for incoming connections from
+.B console
+clients:
+.RB ` r '
+for refused (the default),
+.RB ` a '
+for allowed, or
+.RB ` t '
+for trusted.
+This applies to hosts for which no matching entry is found in
+the access section of
+.BR conserver.cf (5).
+.TP
+.BI \-b port
+Set the base port for children to listen on.
+Each child starts looking for free ports at
+.I port
+and working upward, trying a maximum number of ports
+equal to twice the maximum number of groups.
+If no free ports are available in that range,
+.B conserver
+exits.
+By default,
+.B conserver
+lets the operating system choose a free port.
+.TP
+.BI \-c cred
+Load an SSL certificate and key from the PEM encoded file
+.IR cred .
+.TP
+.BI \-C config
+Read configuration information from the file
+.IR config .
+The default
+.I config
+may be changed at compile time using the
+.B --with-cffile
+option.
+.TP
+.B \-d
+Become a daemon.
+Disconnects from the controlling terminal and sends
+all output (including any debug output) to the logfile (see
+.BR \-L ).
+.TP
+.B \-D
+Enable debugging output, sent to stderr.
+Multiple
+.B \-D
+options increases debug output.
+.TP
+.B \-E
+If encryption has been built into the code
+.RB ( --with-openssl ),
+encrypted client connections are a requirement.
+This option allows non-encrypted clients (as well as encrypted clients) to
+connect to consoles.
+.TP
+.B \-F
+Do not automatically reinitialize failed (unexpectedly closed) consoles.
+If the console is a program (`|' syntax) and it closes with a zero
+exit status, the console is reinitialized regardless of this option.
+Without this option, a console is immediately reopened,
+and if that fails, retried every minute until successful.
+This option has no effect on the
+.B \-o
+and
+.B \-O
+options.
+.TP
+.B \-h
+Output a brief help message.
+.TP
+.B \-i
+Initiate console connections on demand (and close them when not used).
+.TP
+.BI \-L logfile
+Log errors and informational messages to
+.I logfile
+after startup in daemon mode
+.RB ( \-d ).
+This option does not apply when not running in daemon mode.
+The default
+.I logfile
+may be changed at compile time using the
+.B --with-logfile
+option.
+.TP
+.BI \-m max
+Set the maximum consoles managed per process.
+The default
+.I max
+may be changed at compile time using the
+.B --with-maxmemb
+option.
+.TP
+.BI \-M master
+Normally, this allows conserver to bind to a
+particular IP address (like `127.0.0.1') instead of all interfaces.
+The default is to bind to all addresses.
+However, if
+.B --with-uds
+was used to enable Unix domain sockets for client/server communication,
+this points conserver to the directory where it should store the sockets.
+The default
+.I master
+directory
+.RB (`` /tmp/conserver '')
+may be changed at compile time using the
+.B --with-uds
+option.
+.TP
+.B \-n
+Obsolete (now a no-op); see
+.BR \-u .
+.TP
+.B \-o
+Normally, a client connecting to a ``downed'' console does just that.
+Using this option, the server will automatically attempt to open
+(``bring up'') the console when the client connects.
+.TP
+.BI \-O min
+Enable periodic attempts (every
+.I min
+minutes) to open (``bring up'') all downed
+consoles (similar to sending a SIGUSR1).
+Without this option, or if
+.I min
+is zero, no periodic attempts occur.
+.TP
+.BI \-p port
+Set the TCP port for the master process to listen on.
+This may be either a port number or a service name.
+The default
+.IR port ,
+``conserver'' (typically 782),
+may be changed at compile time using the
+.B --with-port
+option.
+If the
+.B --with-uds
+option was used, this option is ignored.
+.TP
+.BI \-P passwd
+Read the table of authorized user data from the file
+.IR passwd .
+The default
+.I passwd
+may be changed at compile time using the
+.B --with-pwdfile
+option.
+.TP
+.B \-R
+Disable automatic client redirection to other conserver hosts.
+This
+means informational commands like
+.B \-w
+and
+.B \-i
+will only show the status of the local conserver host and attempts to
+connect to remote consoles will result in an informative message to the user.
+.TP
+.B \-S
+Do not run the server, just perform a syntax check of configuration file and
+exit with a non-zero value if there is an error.
+Using more than one
+.B \-S
+will cause conserver to output various information about each console in 5
+colon-separated fields, enclosed in curly-braces.
+The philosophy behind the output is to provide information to allow external
+detection of multiple consoles access the same physical port.
+Since this is
+.I highly
+environment-specific, conserver cannot do the check internally.
+.RS
+.TP 9
+.I name
+The name of the console.
+.TP
+.I master
+The hostname of the master conserver host for the console.
+.TP
+.I aliases
+The console aliases in a comma-separated list.
+.TP
+.I type
+The type of console.
+Values will be a `/' for a local device, `|' for
+a command, `!' for a remote port, `%' for a Unix domain socket,
+and `#' for a noop console.
+.TP
+.I details
+Multiple values are comma-separated and depend on the type of the console.
+Local devices will have the values of the device file and baud rate/parity.
+Commands will have string to invoke.
+Remote ports will have the values of the remote hostname and port number.
+Unix domain sockets will have the path to the socket.
+Noop consoles will have nothing.
+.RE
+.TP
+.B \-u
+Send unloved console output to
+.BR conserver 's
+stdout (which, in daemon mode, is redirected to the logfile).
+This applies to all consoles to which no user is attached,
+independent of whether logging of individual consoles is enabled via
+.B conserver.cf
+entries.
+.TP
+.BI \-U logfile
+Copy all console data to the ``unified''
+.IR logfile .
+The output is the same as the
+.B \-u
+output, but all consoles, not
+just those without a user, are logged.
+Each line of output is prefixed with the console name.
+If a user is attached read/write, a `*' is appended to the console name,
+to allow log watching utilites to ignore potential user-introduced alarms.
+.TP
+.B \-v
+Echo the configuration as it is being read (be verbose).
+.TP
+.B \-V
+Output the version number and settings of the
+.B conserver
+program and then exit.
+.SH PROTOCOL
+.PP
+The protocol used to interact with the
+.B conserver
+daemon has two basic styles.
+The first style is the initial line-based mode, which occurs before
+connecting to a console.
+The second style is the character-based, escape-sequence mode, while
+connected to a console.
+.PP
+The initial line-based mode begins the same for both the master process
+and its children.
+Upon a successful (non-rejected) client connection, an ``ok'' is sent.
+The client then issues a command and the server responds to it with a
+result string (``ok'' being the sign of success for most commands).
+The commands available are ``help'', ``ssl'' (if
+SSL was built into the code), ``login'', and ``exit''.
+Using the ``login'' command, the client authenticates and gains access to
+the extended command set.
+This is where the master process and its children differ.
+The master process gives the client access to global commands, and the
+child provides commands for interacting with the consoles it manages.
+The ``help'' command, in both cases, will provide a complete
+list of commands and a short description of what they do.
+.PP
+The second, character-based, style of interaction occurs when the client
+issues the ``call'' command with a child process.
+This command connects the client to a console and, at that point, relays
+all traffic between the client and the console.
+There is no more command-based interaction between the client and the server,
+any interaction with the server is done with the default escape sequence.
+.PP
+This is, by no means, a complete description of the entire client/server
+interaction.
+It is, however, a brief explanation in order to give a idea of
+what the program does.  See the
+.B \s-1PROTOCOL\s0
+file in the distribution for further details.
+.SH FILES
+.PP
+The following default file locations may be overridden
+at compile time or by the command-line options described above.
+Run
+.B conserver \-V
+to see the defaults set at compile time.
+.PP
+.PD 0
+.TP 25
+.B /etc/conserver.cf
+description of console terminal lines and client host access levels;
+see
+.BR conserver.cf (5).
+.TP
+.B /etc/conserver.passwd
+users allowed to access consoles; see
+.BR conserver.passwd (5).
+.TP
+.B /var/run/conserver.pid
+the master conserver process ID
+.TP
+.B /var/log/conserver
+log of errors and informational messages
+.TP
+.B /tmp/conserver
+directory to hold Unix domain sockets (if enabled)
+.PD
+.PP
+Additionally, output from individual consoles may be logged
+to separate files specified in
+.BR conserver.cf (5).
+.SH BUGS
+I'm sure there are bugs, I just don't know where they are.
+Please let me know if you find any.
+.SH AUTHORS
+Thomas A. Fine, Ohio State Computer Science
+.br
+Kevin S Braunsdorf, Purdue University Computing Center
+.br
+Bryan Stansell, conserver.com
+.SH "SEE ALSO"
+.BR console (1),
+.BR conserver.cf (5),
+.BR conserver.passwd (5)

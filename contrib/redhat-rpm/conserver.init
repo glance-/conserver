@@ -1,0 +1,72 @@
+#!/bin/sh
+#
+# conserver -- serial-port console daemon
+#
+# chkconfig: 2345 92 08
+# description: conserver is a serial-port console daemon
+# config: /etc/conserver.cf
+#
+
+DAEMON=/usr/sbin/conserver
+
+# Source function library.
+. /etc/rc.d/init.d/functions
+
+# Source networking configuration.
+. /etc/sysconfig/network
+
+# Source defaults
+. /etc/default/conserver
+
+# Check that networking is up.
+[  ${NETWORKING} = "no" ] && exit 0
+
+# make sure conserver is installed and executable
+[ -x $DAEMON  ] || exit 1
+
+
+start()
+{
+	echo -n "Starting conserver: "
+	daemon --user "${RUNAS-}" $DAEMON ${OPTIONS--d}
+	RETVAL=$?
+	[ "$RETVAL" = 0 ] && touch /var/lock/subsys/conserver
+	echo
+}
+
+stop()
+{
+	echo -n "Shutting down conserver: "
+	killproc conserver
+	RETVAL=$?
+	[ "$RETVAL" = 0 ] && rm -f /var/lock/subsys/conserver
+	echo
+}
+  
+# See how we were called.
+case "$1" in
+  start)
+    start
+    ;;
+  stop)
+    stop
+    ;;
+  status)
+    status conserver
+    ;;
+  restart)
+    stop
+    start
+    ;;
+  reload)
+    echo -n "Reloading conserver: "
+    killproc conserver -HUP
+    RETVAL=$?
+    echo
+    ;;
+  *)
+    echo "Usage: conserver {start|stop|restart|reload|status}"
+    RETVAL=1
+esac
+
+exit $RETVAL

@@ -1,0 +1,45 @@
+# dummy conserver config file
+#
+# $Id: test.cf,v 1.2 2003/07/04 18:04:05 bryan Exp $
+#
+default full {
+	rw *;
+}
+default * {
+	logfile /tmp/&;
+	timestamp "";
+	include full;
+}
+break 5 {
+	string "\rtest\r";
+}
+# list of consoles we serve
+console shell {
+	master localhost;
+	timestamp 5;
+	type exec;
+	exec "";
+}
+console bash {
+	master localhost;
+	timestamp 2;
+	type exec;
+	exec /usr/local/bin/bash;
+}
+console web {
+	master localhost;
+	type host;
+	host www.conserver.com;
+	port 80;
+}
+console b {
+	master localhost;
+	type device;
+	device /dev/ttyb;
+	baud 9600;
+	parity none;
+}
+# list of clients we allow
+access * {
+	trusted 127.0.0.1;
+}

@@ -1,0 +1,1161 @@
+.\" $Id: conserver.cf.man,v 1.78 2007/04/02 17:59:16 bryan Exp $
+.TH CONSERVER.CF 5 "2007/04/02" "conserver-8.1.18" "conserver"
+.SH NAME
+conserver.cf \- console configuration file for
+.BR conserver (8)
+.SH DESCRIPTION
+The format of the conserver.cf file is made up of named blocks of
+keyword/value pairs, comments, and optional whitespace for formatting
+flexibility.
+The block types as well as the keywords are pre-defined and
+explained in the
+.B \s-1BLOCKS\s0
+section.
+A comment is an unquoted pound-sign
+to a newline.
+See the
+.B \s-1PARSER\s0
+section for full details on whitespace and quoting.
+.PP
+Let me first show you a sample block with a couple of keyword/value
+pairs to make the description a bit simpler to understand.
+.IP
+.ft CR
+.nf
+console simple { master localhost; type exec; rw *; }
+.fi
+.ft
+.PP
+This is actually a fully functional conserver.cf file (if certain
+conditions are met...and if you can list those conditions, you can
+probably can skip to the
+.B \s-1BLOCKS\s0
+section).
+.PP
+Our example is made of up of a console-block named ``simple'' with three
+keyword/value pairs.
+What this does is define a console named ``simple'',
+makes the master of that console the host ``localhost'', makes the type
+an exec-style console, and gives every user read/write permission.
+This is the generic format of the file:
+.IP
+.ft CR
+.nf
+block-type block-name { keyword value; ... }
+.fi
+.ft
+.PP
+To show the addition of comments and whitespace, here is the example
+reformatted (but functionally equivalent):
+.IP
+.ft CR
+.nf
+# define a console named "simple"
+console simple {
+    # setting all required values...
+    master localhost;
+    type exec;  # exec-style console
+    rw *;       # allow any username
+}
+.fi
+.ft
+.SH PARSER
+.PP
+The parser has six characters that it considers special.
+These are: ``{'', ``}'', ``;'', ``#'', ``\e'', and ``"''.
+The first three (hereby called tokens) define the format of the
+configuration blocks and are used as word
+separators, the next is the comment character, and the last two are
+quoting characters.
+.PP
+Word separation occurs when the parser encounters an unquoted token
+and, in certain cases, whitespace.
+Whitespace is only used as a word separator when the parser is
+looking for a block-type or keyword.
+When it's looking for a block-name or value, whitespace is like any
+other character, which allows you to embed whitespace in a block-name
+or value without having to quote it.
+Here is an example:
+.IP
+.ft CR
+.nf
+default my defs { rw *; include other defs  ; }
+.fi
+.ft
+.PP
+The block-type is ``default'', the block-name is ``my defs'', and the value
+for the keyword ``include'' is ``other defs''.
+Whitespace around tokens are ignored so you get ``other defs''
+instead of ``other defs  '' as the value.
+.PP
+The only way to use one of the special characters as part of a block-name
+or value is to quote it.
+.PP
+Quoting is a simple matter of prefixing a character with a backslash or
+surrounding a group of characters with double-quotes.
+If a character is prefixed by a backslash, the next character is a
+literal (so ``\e\e'' produces a ``\e'', ``\e"'' produces ``"'', ``\e{''
+produces a ``{'', etc.).
+For double-quoted strings, all characters are literal except for ``\e"'',
+which embeds a double-quote.
+.PP
+Adding a variety of quotes to our example without changing the meaning
+of things, we have:
+.IP
+.ft CR
+.nf
+"defa"ult my\e defs { rw *; in\eclude "other defs"  ; }
+.fi
+.ft
+.PP
+There is one special line the parser recognizes: a ``#include'' statement.
+It is of the form:
+.IP
+.B #include
+.I filename
+.PP
+Any whitespace around
+.I filename
+is ignored, but whitespace embedded inside is preserved.
+Everything in
+.I filename
+is taken literally, so none of the normal parser quoting applies.
+The
+.B #include
+must begin in ``column 0'' - no whitespace is allowed between it and
+the start of the physical line.
+There is an include file depth limit of 10 to prevent infinite recursion.
+.SH BLOCKS
+.TP
+\f3access\fP \f2hostname\fP|\f2ipaddr\fP
+.br
+Define an access block for the host named
+.I hostname
+or using the address
+.IR ipaddr .
+If the value of ``*'' is used, the access block will be applied to
+all conserver hosts.
+Access lists are used in a first match
+fashion (top down), so order is important.
+.RS
+.TP
+\f3admin\fP [\f3!\fP]\f2username\fP[\f3,\fP...]|\f3""\fP
+.br
+Define a list of users making up the admin list for the console server.
+If
+.I username
+matches a previously defined group name, all members of the previous
+group are applied to the admin list (with access reversed if prefixed
+with a `!').
+If
+.I username
+doesn't match a previously defined group and
+.I username
+begins with `@', the name (minus the `@') is checked against the
+host's group database.
+All users found in the group will be granted (or denied, if prefixed
+with `!') access.
+If
+.I username
+doesn't match a previous group and doesn't begin with `@', the users
+will be granted (or denied, if prefixed with `!') access.
+If the null string (``\f3""\fP'') is used, any
+users previously defined for the console servers's admin list are removed.
+.TP
+\f3allowed\fP \f2hostname\fP[\f3,\fP...]
+.br
+The list of hostnames are added to the ``allowed'' list, which grants
+connections from the hosts but requires username authentication.
+.TP
+\f3include\fP \f2accessgroup\fP
+.br
+The access lists defined using the name
+.I accessgroup
+are applied to the current access block.
+The included access block must be previously defined.
+.TP
+\f3limited\fP [\f3!\fP]\f2username\fP[\f3,\fP...]|\f3""\fP
+.br
+Define a list of users with limited functionality on the console server.
+These users will not be allowed to suspend their connection,
+shift to another console, or attach to a local command.
+If
+.I username
+matches a previously defined group name, all members of the previous
+group are applied to the admin list (with access reversed if prefixed
+with a `!').
+If
+.I username
+doesn't match a previously defined group and
+.I username
+begins with `@', the name (minus the `@') is checked against the
+host's group database.
+All users found in the group will be granted (or denied, if prefixed
+with `!') access.
+If
+.I username
+doesn't match a previous group and doesn't begin with `@', the users
+will be granted (or denied, if prefixed with `!') access.
+If the null string (``\f3""\fP'') is used, any
+users previously defined for the console server's limited list are removed.
+.TP
+\f3rejected\fP \f2hostname\fP[\f3,\fP...]
+.br
+The list of hostnames are added to the ``rejected'' list, which rejects
+connections from the hosts.
+.TP
+\f3trusted\fP \f2hostname\fP[\f3,\fP...]
+.br
+The list of hostnames are added to the ``trusted'' list, which grants
+connections from the hosts without username authentication.
+.RE
+.TP
+\f3break\fP \f2n\fP
+.br
+Define a break sequence where 0 < 
+.I n
+< 10.
+Break sequences are accessed via the
+.RI ``^Ecl n ''
+client escape sequence.
+.RS
+.TP
+\f3delay\fP \f2n\fP
+.br
+Set the time delay for the
+.B \ed
+sequence to
+.I n
+milliseconds.
+The default time delay is 250ms.
+.TP
+\f3string\fP \f2breakseq\fP
+.br
+Assign the string
+.IR breakseq
+to the specified slot
+.IR n .
+A break sequence is a simple character string with the exception of `\e'
+and `^':
+.RS
+.RS
+.sp
+.PD 0
+.TP 6
+.B \ea
+alert
+.TP
+.B \eb
+backspace
+.TP
+.B \ed
+delay specified by the
+.B delay
+option.
+.TP
+.B \ef
+form-feed
+.TP
+.B \en
+newline
+.TP
+.B \er
+carriage-return
+.TP
+.B \et
+tab
+.TP
+.B \ev
+vertical-tab
+.TP
+.B \ez
+serial break
+.TP
+.B \e\e
+backslash
+.TP
+.B \e^
+circumflex
+.TP
+.BI \e ooo
+octal representation of a character (where
+.I ooo
+is one to three octal digits)
+.TP
+.BI \e c
+character
+.I c
+.TP
+.B ^?
+delete
+.TP
+.BI ^ c
+control character
+.RI ( c
+is ``and''ed with 0x1f)
+.PD
+.RE
+.RE
+.RE
+.TP
+\f3config\fP \f2hostname\fP|\f2ipaddr\fP
+.br
+Define a configuration block for the host named
+.I hostname
+or using the address
+.IR ipaddr .
+If the value of ``*'' is used, the configuration block will be applied to
+all conserver hosts.
+.RS
+.TP
+\f3autocomplete\fP \f3yes\fP|\f3true\fP|\f3on\fP|\f3no\fP|\f3false\fP|\f3off
+.br
+Turn the console name autocompletion feature on or off.
+If autocompletion is on, a client can use any unique leading portion of a
+console name when connecting to a console.
+Autocompletion is on by default.
+.TP
+\f3defaultaccess\fP \f3rejected\fP|\f3trusted\fP|\f3allowed\fP
+.br
+Set the default access permission for all hosts not matched by
+an access list (see the
+.B \-a
+command-line flag).
+.TP
+\f3daemonmode\fP \f3yes\fP|\f3true\fP|\f3on\fP|\f3no\fP|\f3false\fP|\f3off
+.br
+Set whether or not to become a daemon when run (see the
+.B \-d
+command-line flag).
+.TP
+\f3initdelay\fP \f2number\fP
+.br
+Set the number of seconds between console initializations.
+All consoles with the same
+.B host
+value will be throttled as a group (those without a
+.B host
+value are their own group).
+In other words, each console within a group will only be initialized after
+.I number
+seconds passes from the previous initialization of a console in that group.
+Different throttle groups are initialized simultaneously.
+One warning: since consoles are split up and managed by seperate conserver
+processes, it's possible for more than one conserver process to
+have a throttle group based on a particular
+.B host
+value.
+If this happens, each conserver process will throttle their groups 
+independently of the other conserver processes, which results in a
+more rapid initialization (per
+.B host
+value) than one might otherwise expect.
+If
+.I number
+is zero, all consoles are initialized without delay.
+.TP
+\f3logfile\fP \f2filename\fP
+.br
+Set the logfile to write to when in daemon mode (see the
+.B \-L
+command-line flag).
+.TP
+\f3passwdfile\fP \f2filename\fP
+.br
+Set the password file location used for authentication (see the
+.B \-P
+command-line flag).
+.TP
+\f3primaryport\fP \f2number\fP|\f2name\fP
+.br
+Set the port used by the master conserver process (see the
+.B \-p
+command-line flag).
+.TP
+\f3redirect\fP \f3yes\fP|\f3true\fP|\f3on\fP|\f3no\fP|\f3false\fP|\f3off
+.br
+Turn redirection on or off (see the
+.B \-R
+command-line flag).
+.TP
+\f3reinitcheck\fP \f2number\fP
+.br
+Set the number of minutes used between reinitialization checks (see the
+.B \-O
+command-line flag).
+.TP
+\f3secondaryport\fP \f2number\fP|\f2name\fP
+.br
+Set the base port number used by child processes (see the
+.B \-b
+command-line flag).
+.TP
+\f3setproctitle\fP \f3yes\fP|\f3true\fP|\f3on\fP|\f3no\fP|\f3false\fP|\f3off
+.br
+Set whether or not the process title shows master/group functionality
+as well as the port number the process is listening on and how many
+consoles it is managing.
+The operating system must support the
+.BR setproctitle ()
+call.
+.TP
+\f3sslcredentials\fP \f2filename\fP
+.br
+Set the
+.SM SSL
+credentials file location (see the
+.B \-c
+command-line flag).
+.TP
+\f3sslrequired\fP \f3yes\fP|\f3true\fP|\f3on\fP|\f3no\fP|\f3false\fP|\f3off
+.br
+Set whether or not encryption is required when talking to clients (see the
+.B \-E
+command-line flag).
+.TP
+\f3unifiedlog\fP \f2filename\fP
+.br
+Set the location of the unified log to
+.IR filename .
+See the
+.B \-U
+command-line flag for details.
+.RE
+.TP
+\f3console\fP \f2name\fP
+.br
+Define a console identified as
+.IR name .
+The keywords are the same as the
+.B default
+block with the following addition.
+.RS
+.TP
+\f3aliases\fP \f2name\fP[\f3,\fP...]|\f3""\fP
+.br
+Define a list of console aliases.
+If the null string (``\f3""\fP'') is used, any
+aliases previously defined for the console are removed.
+.RE
+.TP
+\f3default\fP \f2name\fP
+.br
+Define a block of defaults identified as
+.IR name .
+If 
+.I name
+is ``*'', the automatically applied default block is defined (basically
+all consoles have an implicit ``include "*";'' at the beginning
+of their definition).
+.RS
+.TP
+\f3baud\fP \f3300\fP|\f3600\fP|\f31800\fP|\f32400\fP|\f34800\fP|\f39600\fP|\f319200\fP|\f338400\fP|\f357600\fP|\f3115200\fP
+.br
+Assign the baud rate to the console.
+Only consoles of type ``device'' will use this value.
+.TP
+\f3break\fP \f2n\fP
+.br
+Assign the break sequence
+.I n
+as the default for the console, which is used by
+the ``^Ecl0'' client escape sequence.
+.TP
+\f3device\fP \f2filename\fP
+.br
+Assign the serial device
+.I filename
+as the path to the console.
+Only consoles of type ``device'' will use this value.
+.TP
+\f3devicesubst\fP \f2c\fP\f3=\fP\f2t\fP[\f2n\fP]\f2f\fP[\f3,\fP...]|\f3""\fP
+.br
+Perform character substitutions on the
+.B device
+value.
+A series of replacements can be defined by specifying a
+comma-separated list of
+\f2c\fP=\f2t\fP[\f2n\fP]\f2f\fP
+sequences where
+.I c
+is any printable character,
+.I t
+specifies the replacement value,
+.I n
+is a field length (optional),
+and
+.I f
+is the format string.
+.I t
+can be one of the characters below, catagorized as a string replacement
+or a numeric replacement, which dictates the use of the
+.I n
+and
+.I f
+fields.
+.RS
+.RS
+.sp
+.PD 0
+.TP
+String Replacement
+.TP
+.B c
+console name
+.TP
+.B h
+.B host
+value
+.TP
+.B r
+.B replstring
+value
+.sp
+.PP
+Numeric Replacement
+.TP
+.B p
+config
+.B port
+value
+.TP
+.B P
+calculated port value
+.PD
+.RE
+.RE
+.IP
+For string replacements, if the replacement isn't at least
+.I n
+characters, it will be padded with space characters on the left.
+.I f
+must be `s'.
+For numeric replacements, the value will be formatted to at least
+.I n
+characters, padded with 0s if
+.I n
+begins with a 0, and space characters otherwise.
+.I f
+must be either `d', `x', `X', `a', or `A', specifying a decimal, lowercase
+hexadecimal (0-9a-f), uppercase hexadecimal (0-9A-F), lowercase
+alphanumeric (0-9a-z), or uppercase alphanumeric (0-9A-Z) conversion.
+If the null string (``\f3""\fP'') is used, no replacements will be done.
+.TP
+\f3exec\fP \f2command|\f3""\fP
+.br
+Assign the string
+.I command
+as the command to access the console.
+Conserver will run the command by
+invoking ``/bin/sh -ce "\f2command\fP"''.
+If the null string (``\f3""\fP'') is used or no
+.B exec
+keyword is specified, conserver will use the command ``/bin/sh -i''.
+Only consoles of type ``exec'' will use this value.
+.TP
+\f3execrunas\fP [\f2user\fP][:\f2group\fP]|\f3""\fP
+.br
+By default, the command invoked by
+.B exec
+is run with the same privileges as the server.
+If the server is running with root privileges, this option resets the user
+and/or group of the invoked process to
+.I user
+and
+.I group
+respectively.
+.I user
+may be a username or numeric uid and
+.I group
+may be a group name or numeric gid.
+Either one is optional.
+If the server is not running with root privileges, these values
+are not used.
+If the null string (``\f3""\fP'') is specified, the default of running
+with the same privileges as the server is restored.
+.TP
+\f3execsubst\fP \f2c\fP\f3=\fP\f2t\fP[\f2n\fP]\f2f\fP[\f3,\fP...]|\f3""\fP
+.br
+Perform character substitutions on the
+.B exec
+value.
+See the
+.B devicesubst
+option for an explanation of the format string.
+If the null string (``\f3""\fP'') is used, no replacements will be done.
+.TP
+\f3host\fP \f2hostname\fP
+.br
+Assign
+.I hostname
+as the host to connect to for accessing the console.
+You must also set the
+.B port
+option as well.
+Normally, only consoles of type ``host'' will use this value, however
+if the
+.BR devicesubst ,
+.BR execsubst ,
+or
+.B initsubst
+keywords are used in any console type, this value is used.
+.TP
+\f3idlestring\fP \f2string\fP|\f3""\fP
+.br
+Assign the
+.I string
+that is sent to the console once the console is idle for an
+.I idletimeout
+amount of time.
+If the null string (``\f3""\fP'') is used, the string is unset and
+the default is used.
+The string is interpreted just as a
+.B break
+string is interpreted (see the
+.B break
+configuration items for details) where all delays specified (via ``\ed'')
+use the default delay time.
+The default string is ``\en''.
+.TP
+\f3idletimeout\fP \f2number\fP[\f3s\fP|\f3m\fP|\f3h\fP]
+.br
+Set the idle timeout of the console to
+.I number
+seconds.
+If an `s', `m', or `h' is used after
+.IR number ,
+the specified time is interpreted as seconds, minutes, or hours.
+Set the timeout to zero to disable the idle timeout (the default).
+.TP
+\f3include\fP \f2default\fP
+.br
+The default block defined using the name
+.I default
+is applied to the current console or default block.
+The included default block must be previously defined.
+.TP
+\f3initcmd\fP \f2command\fP|\f3""\fP
+.br
+Invoke
+.I command
+as soon as the console is brought up, redirecting the console
+to stdin, stdout, and stderr of
+.IR command .
+The
+.I command
+is passed as an argument to ``/bin/sh -ce''.
+If the null string (``\f3""\fP'') is used, the command is unset and
+nothing is invoked.
+.TP
+\f3initrunas\fP [\f2user\fP][:\f2group\fP]|\f3""\fP
+.br
+By default, the command invoked by
+.B initcmd
+is run with the same privileges as the server.
+If the server is running with root privileges, this option resets the user
+and/or group of the invoked process to
+.I user
+and
+.I group
+respectively.
+.I user
+may be a username or numeric uid and
+.I group
+may be a group name or numeric gid.
+Either one is optional.
+If the server is not running with root privileges, these values
+are not used.
+If the null string (``\f3""\fP'') is specified, the default of running
+with the same privileges as the server is restored.
+.TP
+\f3initspinmax\fP \f2n\fP|\f3""\fP
+.br
+Set the maximum number of ``spins'' allowed for the console to
+.IR n ,
+where 0 <=
+.I n
+<= 254.
+A console is determined to be ``spinning'' if an attempt to initialize
+the console occurs in under
+.B initspintimer
+seconds from its previous initialization and this quick
+initialization occurs
+.B initspinmax
+times in a row.
+If, at any point, the time between initializations is greater than
+.BR initspintimer ,
+the counter for reaching
+.B initspinmax
+resets to zero.
+When a console is determined to be ``spinning'' it is forced down.
+If the null string (``\f3""\fP'') is specified, the default of
+.B 5
+is used.
+.TP
+\f3initspintimer\fP \f2t\fP|\f3""\fP
+.br
+Set the number of seconds a console must be ``up'' to not be
+considered ``spinning'' to
+.IR t ,
+where 0 <=
+.I t
+<= 254.
+See
+.B initspinmax
+for a full description of console ``spinning.''
+If the null string (``\f3""\fP'') is specified, the default of
+.B 1
+is used.
+.TP
+\f3initsubst\fP \f2c\fP\f3=\fP\f2t\fP[\f2n\fP]\f2f\fP[\f3,\fP...]|\f3""\fP
+.br
+Perform character substitutions on the
+.B initcmd
+value.
+See the
+.B devicesubst
+option for an explanation of the format string.
+If the null string (``\f3""\fP'') is used, no replacements will be done.
+.TP
+\f3logfile\fP \f2filename\fP|\f3""\fP
+.br
+Assign the logfile specified by
+.I filename
+to the console.
+Any occurrence of ``&'' in
+.I filename
+will be replaced with the name of the console.
+If the null string (``\f3""\fP'') is used, the logfile name is unset and
+no logging will occur.
+.TP
+\f3logfilemax\fP \f2number\fP[\f3k\fP|\f3m\fP]
+.br
+Enable automatic rotation of
+.B logfile
+once its size exceeds
+.I number
+bytes.
+Specifying
+.B k
+or
+.B m
+interpret
+.I number
+as kilobytes and megabytes.
+.I number
+must be at least 2048 bytes.
+A value of zero will turn off automatic rotation of
+.BR logfile .
+The
+.B logfile
+.I filename
+will be renamed
+.IR filename -\s-1YYYYMMDD\s0-\s-1HHMMSS\s0,
+where the extension is the current GMT year, month, day, hour,
+minute, and second (to prevent issues with clock rollbacks).
+File sizes are checked every 5 minutes with an additional initial
+pseudo-random delay of up to one minute (to help prevent all processes
+checking all consoles simultaneously).
+2.5% (minimum 100 bytes, maximum 4000 bytes) of the old
+logfile is read from the end of the file.
+All data past the first newline is moved (not copied) to the new logfile
+so that a replay of the console works and starts on a line boundary.
+.TP
+\f3master\fP \f2hostname\fP|\f2ipaddr\fP
+.br
+Define which conserver host manages the console.
+The host may be specified by
+.I hostname
+or using the address
+.IR ipaddr .
+.TP
+\f3motd\fP \f2message\fP|\f3""\fP
+.br
+Set the "message of the day" for the console to
+.IR message ,
+which gets displayed when a client attaches to the console.
+If the null string (``\f3""\fP'') is used, the MOTD is unset and
+no message will occur.
+.TP
+\f3options\fP [\f3!\fP]option[\f3,\fP...]|\f3""\fP
+.br
+You can negate the option by prefixing it with a
+.RB `` ! ''
+character.
+So, to turn off the
+.B hupcl
+flag, you would use
+.BR !hupcl .
+The following are valid
+.IR option s:
+.RS
+.sp
+.PD 0
+.TP 12
+.B ixon
+Enable
+.SM XON/XOFF
+flow control on output.
+Only consoles of type ``device'' or ``exec'' will use this value.
+Default is
+.BR ixon .
+.TP
+.B ixany
+Enable any character to restart output.
+Only consoles of type ``device'' or ``exec'' will use this value.
+Default is
+.BR !ixany .
+.TP
+.B ixoff
+Enable
+.SM XON/XOFF
+flow control on input.
+Only consoles of type ``device'' or ``exec'' will use this value.
+Default is
+.B ixoff
+for consoles of type ``device'' and
+.B !ixoff
+for consoles of type ``exec''.
+.TP
+.B crtscts
+Enable
+.SM RTS/CTS
+(hardware) flow control.
+Only consoles of type ``device'' will use this value.
+Default is
+.BR !crtscts .
+.TP
+.B cstopb
+Set two stop bits, rather than one.
+Only consoles of type ``device'' will use this value.
+Default is
+.BR !cstopb .
+.TP
+.B hupcl
+Lower modem control lines after last process closes the device (hang up).
+Only consoles of type ``device'' will use this value.
+Default is
+.BR !hupcl .
+.TP
+.B ondemand
+Initialize the console when a client requests a connection to the console.
+When no clients are connected, bring the console down.
+The conserver option
+.B \-i
+will set this flag for all consoles.
+Default is
+.BR !ondemand .
+.TP
+.B striphigh
+Strip the high bit off all data coming from this console and all clients
+connected to this console before processing occurs.
+The conserver option
+.B \-7
+will set this flag for all consoles.
+Default is
+.BR !striphigh .
+.TP
+.B reinitoncc
+Automatically reinitialize (``bring up'') a downed console when a client
+connects.
+Without this option, a client will be attached to the downed console
+and will need to manually reinitialize the console with an escape sequence.
+The conserver option
+.B \-o
+will set this flag for all consoles.
+Default is
+.BR !reinitoncc .
+.TP
+.B autoreinit
+Allow this console to be automatically reinitialized if it unexpectedly
+goes down.
+If the console doesn't come back up, it is retried every minute.
+A console of type ``exec'' that exits with a zero exit status is
+automatically reinitialized regardless of this setting.
+The conserver option
+.B \-F
+will
+.B unset
+this flag for all consoles.
+Default is
+.BR autoreinit .
+.TP
+.B unloved
+Enable the sending of this console's output (prefixed with its
+name) to the daemon's stdout (or the logfile if in daemon mode) when no
+clients are connected to the console.
+The conserver option
+.B \-u
+will set this flag for all consoles.
+Default is
+.BR !unloved .
+.TP
+.B login
+Allow users to log into this console.
+If logins are not allowed, conserver will send a generic message to the
+client saying so and terminate the connection.
+You can override the generic message by setting the
+.B motd
+message.
+Default is
+.BR login .
+.PD
+.RE
+.TP
+\f3parity\fP \f3even\fP|\f3mark\fP|\f3none\fP|\f3odd\fP|\f3space\fP
+.br
+Set the parity option for the console.
+Only consoles of type ``device'' will use this value.
+.TP
+\f3port\fP \f2number\fP|\f2name\fP
+.br
+Set the port used to access the console.
+The port may be specified as a
+.I number
+or a
+.IR name .
+A
+.I name
+will cause a
+.BR getservbyname (3)
+call to look up the port number.
+The
+.BR port ,
+.BR portbase ,
+and
+.B portinc
+values are all used to calculate the final port number to connect to.
+The formula used is
+.IR finalport " = "
+.BR portbase " + "
+.BR portinc " * " port .
+By using proper values in the formula, you can reference ports on a
+terminal server by their physical numbering of
+.RI 0.. n
+or
+.RI 1.. n
+(depending on if you like zero-based or one-based numbering).
+Warning: you can generate a \-1 value with this formula,
+which will become a very high numbered positive
+value (since things are stored unsigned).
+You must also set the
+.B host
+option as well.
+Normally, only consoles of type ``host'' will use this value, however
+if the
+.BR devicesubst ,
+.BR execsubst ,
+or
+.B initsubst
+keywords are used in any console type, this value is used.
+.TP
+\f3portbase\fP \f2number\fP
+.br
+Set the base value for the port calculation formula.
+.I number
+must be 0 or greater.
+The default is zero.
+See
+.B port
+for the details of the formula.
+.TP
+\f3portinc\fP \f2number\fP
+.br
+Set the increment value for the port calculation formula.
+.I number
+must be 0 or greater.
+The default is one.
+See
+.B port
+for the details of the formula.
+.TP
+\f3protocol\fP \f3telnet\fP|\f3raw\fP
+.br
+Set the protocol used to send and receive data from the console.
+If
+.B raw
+is used, all data is sent ``as is'', unprotected by any protocol specification.
+If
+.B telnet
+is used (which is the default), data is encapsulated in the telnet protocol.
+The
+.B striphigh
+console option still applies when data is read by the server, and if enabled,
+can impact the encapsulation process.
+.TP
+\f3replstring\fP \f2string\fP
+.br
+A generic replacement string that can be used by the
+.BR devicesubst ,
+.BR execsubst ,
+and
+.B initsubst
+keywords.
+.TP
+\f3ro\fP [\f3!\fP]\f2username\fP[\f3,\fP...]|\f3""\fP
+.br
+Define a list of users making up the read-only access list
+for the console.
+If
+.I username
+matches a previously defined group name, all members of the previous
+group are applied to the read-only access list (with access reversed
+if prefixed with a `!').
+If
+.I username
+doesn't match a previously defined group and
+.I username
+begins with `@', the name (minus the `@') is checked against the
+host's group database.
+All users found in the group will be granted (or denied, if prefixed
+with `!') read-only access.
+If
+.I username
+doesn't match a previous group and doesn't begin with `@', the users
+will be granted (or denied, if prefixed with `!') read-only access.
+If the null string (``\f3""\fP'') is used, any
+users previously defined for the console's read-only list are removed.
+.TP
+\f3rw\fP [\f3!\fP]\f2username\fP[\f3,\fP...]|\f3""\fP
+.br
+Define a list of users making up the read-write access list
+for the console.
+If
+.I username
+matches a previously defined group name, all members of the previous
+group are applied to the read-write access list (with access reversed
+if prefixed with a `!').
+If
+.I username
+doesn't match a previously defined group and
+.I username
+begins with `@', the name (minus the `@') is checked against the
+host's group database.
+All users found in the group will be granted (or denied, if prefixed
+with `!') read-write access.
+If
+.I username
+doesn't match a previous group and doesn't begin with `@', the users
+will be granted (or denied, if prefixed with `!') read-write access.
+If the null string (``\f3""\fP'') is used, any
+users previously defined for the console's read-write list are removed.
+.TP
+\f3timestamp\fP [\f2number\fP[\f3m\fP|\f3h\fP|\f3d\fP|\f3l\fP]][\f3a\fP][\f3b\fP]|\f3""\fP
+.br
+Specifies the time between timestamps applied to the console
+log file and whether to log read/write connection actions.
+The timestamps look like ``[-- MARK -- Mon Jan 25 14:46:56 1999]''.
+The
+.RB ` m ',
+.RB ` h ',
+and
+.RB ` d '
+tags specify ``minutes'' (the default), ``hours'', and ``days''.
+The
+.RB ` l '
+tag specifies ``lines'' and will cause timestamps of the
+form ``[Mon Jan 25 14:46:56 PST 1999]'' to
+be placed every
+.I number
+lines (a newline character signifies a new line).
+So, ``5h'' specifies every five hours and ``2l'' specifies every
+two lines.
+An
+.RB ` a '
+can be specified to add logs of ``attached'', ``detached'',
+and ``bumped'' actions, including the user's name and the host from which the
+client connection was made.
+A
+.RB ` b '
+can be specified to add logging of break sequences sent to the console.
+.TP
+\f3type\fP \f3device\fP|\f3exec\fP|\f3host\fP|\f3noop\fP|\f3uds\fP
+.br
+Set the type of console.
+A type of
+.RB `` device ''
+should be used for local serial ports (also set the
+.B device
+value).
+A type of
+.RB `` exec ''
+should be used for command invocations (perhaps also set the
+.B exec
+value).
+A type of
+.RB `` host ''
+should be used for terminal servers and other TCP socket-based
+interaction (also set the
+.B host
+and
+.B port
+values).
+A type of
+.RB `` noop ''
+should be used as a placeholder - it does nothing, ignores any
+.B logfile
+value and forces the
+.B !nologin
+option (so you might want to set the
+.B motd
+value).
+A type of
+.RB `` uds ''
+should be used for Unix domain sockets (also set the
+.B uds
+option).
+.TP
+\f3uds\fP \f2filename\fP
+.br
+Assign the Unix domain socket
+.I filename
+as the path to the console.
+Only consoles of type ``uds'' will use this value.
+.TP
+\f3udssubst\fP \f2c\fP\f3=\fP\f2t\fP[\f2n\fP]\f2f\fP[\f3,\fP...]|\f3""\fP
+.br
+Perform character substitutions on the
+.B uds
+value.
+See the
+.B devicesubst
+option for an explanation of the format string.
+If the null string (``\f3""\fP'') is used, no replacements will be done.
+.RE
+.TP
+\f3group\fP \f2name\fP
+.br
+Define a user group identified as
+.I name
+.RS
+.TP
+\f3users\fP [\f3!\fP]\f2username\fP[\f3,\fP...]|\f3""\fP
+.br
+Define a list of users making up the group
+.IR name .
+If
+.I username
+matches a previously defined group name, all members of the previous
+group are applied to the current group (with access reversed
+if prefixed with a `!').
+If
+.I username
+doesn't match a previously defined group and
+.I username
+begins with `@', the name (minus the `@') is checked against the
+host's group database.
+All users found in the group will be recorded with (or without, if prefixed
+with `!') access.
+If
+.I username
+doesn't match a previous group and doesn't begin with `@', the users
+will be recorded with (or without, if prefixed with `!') access.
+If the null string (``\f3""\fP'') is used, any
+users previously defined for this group are removed.
+.RE
+.SH AUTHORS
+Bryan Stansell, conserver.com
+.SH "SEE ALSO"
+.BR console (1),
+.BR conserver.passwd (5),
+.BR conserver (8)

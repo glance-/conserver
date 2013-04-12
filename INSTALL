@@ -1,0 +1,282 @@
+                                INSTALL
+                                =======
+
+Upgrading?
+
+    Whenever you upgrade I suggest you upgrade both the client and
+    server.  Most times, however, you can get away without upgrading
+    the client (it's usually a fairly static piece of code).  I'll
+    document any dependencies here, but check the CHANGES file for any
+    new features added to the client if you're considering *not*
+    upgrading.
+
+    Version 8.1.3
+	- The '^Ec;' sequence won't work correctly with 8.1.2 (where it
+	  was introduced).
+
+    Version 8.1.2
+	- The 'devicesubst' and 'execsubst' formats have changed from
+	  8.1.1.  It's fairly simple to update your config file to the
+	  new format...just check the conserver.cf manpage.  Sorry for
+	  having to change things, but it's for a good reason (I should
+	  have though ahead when designing the original format).
+
+    Version 8.1.0
+
+	- The client/server protocol has changed to better protect 8-bit
+	  data and to allow programs invoked with '^Ec|' not have to
+	  worry about accidentally sending the escape sequence to the
+	  server.  Though it will look like things are mostly
+	  backward-compatible, don't count on it and just upgrade.
+
+    Version 8.0.2
+
+	- I've added a '^Ec;' sequence to allow the client to signal the
+	  server as to when it's ready to see console data.  Without
+	  this, verbose consoles will prevent clients from attaching
+	  (the client sees unexpected data).  An 8.0.2 client should be
+	  compatible with an 8.0.1 server, but an 8.0.1 client is not
+	  compatible with an 8.0.2 server.
+
+    Version 8.0.1
+
+	- There's a slight client/server protocol change to implement
+	  the new 'initcmd' console option.  If you use this
+	  functionality with an 8.0.0 client, you'll run into a
+	  compatibility problem while the 'initcmd' command is running.
+
+    Version 8.0.0
+
+	- The client/server protocol has been rearchitected.  You *MUST*
+	  use an 8.0.0 client with an 8.0.0 server.  No combination of
+	  client/server will work with pre-8.0.0 code.
+
+	- Upgrading from pre-8.0.0 code to 8.0.0 and beyond requires
+	  you to change your conserver.cf and conserver.passwd files
+	  because both of the file formats have changed.
+
+	  The conserver.cf file changes are so major that there is a
+	  convert program available in the conserver subdirectory.  Just
+	  run './conserver/convert <old-cf-file>' and it will attempt a
+	  conversion to the new format, sending it to stdout.  Any errors
+	  will be printed to stderr.  There are a couple of things
+	  you might need to adjust.  First are the user access lists.
+	  If you are restricting users to certain consoles in your old
+	  conserver.passwd file, you'll need to move those restrictions
+	  into the new conserver.cf file.  Restrictions are set with the
+	  'ro' and 'rw' tags in the configuration file.  Second are the
+	  'access' blocks.  What get produced by the convert program
+	  will be functionally equivalent to the old behavior, but you
+	  may be able to tune things to better suit your environment.
+
+	  The conserver.passwd file's console restrictions have moved,
+	  as described above.  So to convert the conserver.passwd file,
+	  all you really need to do is something like:
+
+		awk -F: '{print $1 ":" $2}' <old-passwd-file>
+
+	  If you have comments or continuation lines in your file,
+	  you'll have to do a bit more cleanup to strip out the third
+	  field (which is what the awk command is intending to do).
+
+	- Conserver no longer trusts reverse DNS information by default.
+	  If you use the --with-trustrevdns configure flag, you can
+	  re-enable the use of gethostbyaddr() [I don't recommended it,
+	  however].  If you are using domain names in access lists,
+	  you'll either need to change those to use hostnames and/or ip
+	  addresses/ranges or use the --with-trustrevdns flag.  For
+	  example, if you have (in the
+	  8.0.0 format):
+
+		allowed conserver.com;  # allow *.conserver.com
+
+	  then you'll need to worry about this change.  If you only use
+	  full hostnames, you shouldn't have to do anything.
+
+    Version 7.2.4
+
+        - If SSL support is compiled into the code, older versions of
+          the client and server are, by default, incompatible because
+          encrypted connections are a requirement.  Use of the -E flag in
+          the client and/or server can work around this (but I discourage
+          this - please upgrade the clients and servers instead).
+
+    Version 7.2.0
+
+        - The code related to broadcast messages in the client (-b) has
+          changed.  If you want the username to come across properly in
+          the broadcast message, you'll need to make sure you upgrade
+          to the 7.2.0 client.
+
+    Version 7.1.1
+
+        - Both conserver.passwd and conserver.cf file parsing behaves
+          the same now.  Both use leading whitespace as a continuation
+          line indicator - if you have leading whitespace on a line
+          (aside from comments) you probably should remove it.
+
+    Version 7.1.0
+
+        - The client/server protocol has changed.  You *MUST* use a
+          7.1.0 client with a 7.1.0 and above server.  A 7.1.0 client
+          is *not* backward compatible with a pre-7.1.0 server.
+
+        - Some of the flags in the client (-d, -D, and -r) and server
+          (-n) have been given new identities to make the client and
+          server flags more uniform.
+
+        - The conserver.passwd file now uses the first username match
+          to determine access rights - if you have multiple instances
+          of a username in an existing password file, they must be
+          combined into one to continue to work.
+
+
+Quickie Instructions
+
+    - Download conserver (http://www.conserver.com/) and unpack
+
+    - Run './configure'
+
+    - Run 'make'
+
+    - Run 'make test'
+
+    - If all is well, run 'make install'
+
+    - Now set up config files, etc. (see below)
+
+
+Detailed Instructions
+
+    - First thing to do is determine if you want different defaults.  A
+      './configure --help' will show you the basics.  If you like all
+      the defaults shown, you're set.  If not, here are the conserver
+      unique options:
+
+        --with-port=PORT        Specify port number [conserver]
+        --with-base=PORT        Base port for secondary channel [0]
+        --with-master=MASTER    Specify master server hostname [console]
+        --with-cffile=CFFILE    Specify config filename
+                                [SYSCONFDIR/conserver.cf]
+        --with-pwdfile=PWDFILE  Specify password filename
+                                [SYSCONFDIR/conserver.passwd]
+        --with-logfile=LOGFILE  Specify log filename [/var/log/conserver]
+        --with-pidfile=PIDFILE  Specify PID filepath [/var/run/conserver.pid]
+        --with-maxmemb=MAXMEMB  Specify maximum consoles per process [16]
+        --with-timeout=TIMEOUT  Specify connect() timeout in seconds [10]
+        --with-trustrevdns      Trust reverse DNS information
+        --with-extmsgs          Produce extended messages
+        --with-uds[=DIR]        Use Unix domain sockets for client/server
+                                communication [/tmp/conserver]
+        --with-libwrap[=PATH]   Compile in libwrap (tcp_wrappers) support
+        --with-openssl[=PATH]   Compile in OpenSSL support
+        --with-dmalloc[=PATH]   Compile in dmalloc support
+        --with-pam              Enable PAM support
+
+      Not surprisingly, some match the old conserver/cons.h items...here
+      they are for reference:
+
+        PORT or SERVICE         - Socket used to communicate
+        HOST                    - Hostname of console server
+        CONFIG                  - Config file path
+        PASSWD_FILE             - Password file path
+        MAXMEMB                 - Number of consoles per child process
+
+      A couple of notes.  First, --with-libwrap will add tcp_wrappers
+      lookups to all socket connections in the server.  --with-openssl
+      will add encryption between the client and server when you connect
+      to a console.  --with-uds will cause the client and server to use
+      unix domain sockets for their communication, eliminating the
+      tcp communication they normally do (which means --with-master and
+      --with-port are not used).  --with-dmalloc should only be used to
+      do memory allocation debugging and not used in production.
+
+    - Run './configure'.  This will detect system specific
+      information.  The --prefix option will redirect where things are
+      installed.  Other options are available as well...try
+      './configure --help'.
+
+    - Now run 'make'.  Hopefully things will compile.
+
+    - To test your binaries, run 'make test'.  If there are problems, it
+      should mean something is wrong, but check the output differences
+      to make sure it wasn't a temporary failure.  I tried to make the
+      tests generic, but I may have missed something.
+
+    - Once things build, you can run 'make install'.
+
+    - If you'd like to build the autologin application, you'll need to
+      run 'make autologin'.  If you'd like it installed, use 'make
+      autologin.install'.
+
+    - Now that the binaries are in place, we need to set up the
+      configuration files and such.
+
+      + Does your conserver master hostname exist?  This is the
+        hostname specified with the --with-master option.  By default
+        the hostname is "console", so make sure it's in DNS, hosts
+        files, or whatever.
+
+      + If you used a symbolic name for the --with-port option (by
+        default it uses "conserver", so the answer would be yes),
+        you'll need to enter a definition in your services file
+        (directly, via NIS, or whatever).  Here's what we use:
+
+            console      782/tcp    conserver    # console server
+
+        If you used a number, you shouldn't have to worry about this
+        step.
+
+      + Next, make sure conserver runs during boot.  The init script we
+	use under Solaris is installed in
+	<DATADIR>/examples/conserver/conserver.rc.  Use that or some
+	form of it for your own /etc/init.d script or an entry in
+	startup files (/etc/rc, /etc/rc.local, or whatever).
+
+      + Now for the fun stuff.  You need to create a conserver.cf and
+        conserver.passwd file.  Those are defined with the
+        --with-cffile and --with-pwdfile settings.  If you ever need to
+        know what values were compiled into conserver, run 'conserver
+        -V'.  See the conserver.cf/INSTALL file for instructions on
+        setup of these files.
+
+    - That's it!  Just start up the console server and enjoy!
+
+
+Other Information And Gotchas
+
+    - Debian Linux Distribution
+
+        The Debian folks have conserver distributed with the package
+        names of conserver-client and conserver-server.  They are in
+        the distribution "sid" and the "non-free" part (because the
+        Ohio State license doesn't explicitly allow for modification to
+        the code, even though it's totally implied and the intention of
+        the author - I've even got proof in email!  Oh well, can't
+        blame the Debian folks for being cautious - they've been burned
+        before, apparently).
+
+    - Potential GCC bug
+
+        Adam Morris <AMorris@providence.org> reported a problem with
+        the following line in console/console.c:
+
+            if ((in_addr_t) (-1) == pPort->sin_addr.s_addr) {
+
+        This tickles a GCC bug under HP-UX 11.11 using GCC 3.0.2 in
+        64-bit mode with optimization enabled (-O).  The bug could
+        possibly be provoked in other combinations as well.  His fix is
+        to change the line to:
+
+            if ((in_addr_t) (-1) == inet_addr(pcToHost)) {
+
+        It's also reported that newer versions of the compiler fix the
+        issue, so if you happen to have problems with the client
+        connecting to servers, you might be tickling this bug and you
+        can upgrade the compiler, turn off the optimization, or apply
+        this code change.
+
+
+#
+#  $Id: INSTALL,v 1.39 2005/05/21 13:47:16 bryan Exp $
+#

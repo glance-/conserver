@@ -635,12 +635,20 @@ DestroyConsent(pGE, pCE)
 	free(pCE->master);
     if (pCE->exec != (char *)0)
 	free(pCE->exec);
+    if (pCE->powerreset != (char *)0)
+	free(pCE->powerreset);
+    if (pCE->poweroff != (char *)0)
+	free(pCE->poweroff);
+    if (pCE->poweron != (char *)0)
+	free(pCE->poweron);
     if (pCE->device != (char *)0)
 	free(pCE->device);
     if (pCE->devicesubst != (char *)0)
 	free(pCE->devicesubst);
     if (pCE->execsubst != (char *)0)
 	free(pCE->execsubst);
+    if (pCE->powersubst != (char *)0)
+	free(pCE->powersubst);
     if (pCE->initsubst != (char *)0)
 	free(pCE->initsubst);
     if (pCE->logfile != (char *)0)
@@ -1859,6 +1867,241 @@ SendBreak(pCLServing, pCEServing, bt)
 	} else {
 	    TagLogfile(pCEServing, "break #%d sent -- `%s'", bt,
 		       breakList[bt - 1].seq->string);
+	}
+    }
+}
+
+void
+#if PROTOTYPES
+StartPower(CONSCLIENT *pCLServing, CONSENT *pCE, unsigned char acIn)
+#else
+StartPower(pCLServing, pCE, pt)
+    CONSCLIENT *pCLServing;
+    CONSENT *pCE;
+    unsigned char acIn;
+#endif
+{
+    CONSCLIENT *pCL;
+    int i;		/* fd loop var in child, read var in parrent */
+    extern char **environ;
+    int pin[2];		/* pipe from child to parrent */
+    char line[256];     /* read from child */
+    static char *apcArgv[] = {
+	"/bin/sh", "-ce", (char *)0, (char *)0
+    };
+
+    switch(acIn - '0') { /* char to int convertion */
+	case 0:
+	    if (pCE->powerreset == (char *)0) {
+		FileWrite(pCLServing->fd, FLAGFALSE, "undefined]\r\n", -1);
+		return;
+	    }
+	    if ((apcArgv[2] = StrDup(pCE->powerreset)) == (char *)0)
+		OutOfMem();
+	    break;
+	case 1:
+	    if (pCE->poweroff == (char *)0) {
+		FileWrite(pCLServing->fd, FLAGFALSE, "undefined]\r\n", -1);
+		return;
+	    }
+	    if ((apcArgv[2] = StrDup(pCE->poweroff)) == (char *)0)
+		OutOfMem();
+	    break;
+	case 2:
+	    if (pCE->poweron == (char *)0) {
+		FileWrite(pCLServing->fd, FLAGFALSE, "undefined]\r\n", -1);
+		return;
+	    }
+	    if ((apcArgv[2] = StrDup(pCE->poweron)) == (char *)0)
+		OutOfMem();
+	    break;
+	default:
+	    FileWrite(pCLServing->fd, FLAGFALSE, "aborted]\r\n", -1);
+	    return;
+    }
+
+    /* this should never happen, but hey, just in case */
+    if (apcArgv[2] == (char *)0)
+	return;
+
+    if (pCE->powerfile != (CONSFILE *)0 || pCE->powerpid != 0) {
+	    FileWrite(pCLServing->fd, FLAGFALSE, "aborted] powercmd in progress\r\n", -1);
+		free(apcArgv[2]);
+		return;
+    }
+
+    FilePrint(pCLServing->fd, FLAGFALSE, "%s\r\n", apcArgv[2]);
+
+    /* pin[0] = parent read, pin[1] = child write */
+    if (pipe(pin) != 0) {
+	Error("[%s] StartPower(): pipe(): %s", pCE->server,
+	      strerror(errno));
+	free(apcArgv[2]);
+	return;
+    }
+
+    fflush(stdout);
+    fflush(stderr);
+    switch (pCE->powerpid = fork()) {
+	case -1: /* error */
+	    Error("[%s] StartPower(): fork(): %s", pCE->server,
+		strerror(errno));
+	    free(apcArgv[2]);
+	    return;
+	case 0: /* child */
+	    /* setup new process with clean file descriptors */
+	    close(pin[0]);
+
+	    /*
+	     * put the signals back that we ignore
+	     * (trapped auto-reset to default)
+	     */
+	    SimpleSignal(SIGQUIT, SIG_DFL);
+	    SimpleSignal(SIGINT, SIG_DFL);
+	    SimpleSignal(SIGPIPE, SIG_DFL);
+#if defined(SIGTTOU)
+	    SimpleSignal(SIGTTOU, SIG_DFL);
+#endif
+#if defined(SIGTTIN)
+	    SimpleSignal(SIGTTIN, SIG_DFL);
+#endif
+#if defined(SIGTSTP)
+	    SimpleSignal(SIGTSTP, SIG_DFL);
+#endif
+#if defined(SIGPOLL)
+	    SimpleSignal(SIGPOLL, SIG_DFL);
+#endif
+
+	    i = GetMaxFiles();
+	    while ( --i > 2 ) {
+		if (i != pin[1])
+		    close(i);
+	    }
+
+	    close(1); /* STDOUT */
+
+	    /* TODO: setsid? */
+
+	    if (dup(pin[1]) != 1) {
+		Error("[%s] StartPower(): dup(): %s", pCE->server,
+		    strerror(errno));
+		Bye(EX_OSERR);
+	    }
+	    /* leave 2 until we have to close it */
+	    /* close up the pipes */
+	    close(pin[1]);
+
+	    if (geteuid() == 0) {
+		if (pCE->execgid != 0)
+		    setgid(pCE->execgid);
+		if (pCE->execuid != 0)
+		    setuid(pCE->execuid);
+	    }
+
+	    /* TODO: tcsetpgrp? */
+
+	    /* dup STDERR to STDOUT pipe*/
+	    close(2);
+	    dup(1);
+
+	    close(0); /* STDIN, child dont get any input */
+
+	    execve(apcArgv[0], apcArgv, environ);
+	    Error("[%s] execve(%s): %s", pCE->server, apcArgv[2],
+		strerror(errno));
+	    Bye(EX_OSERR);
+	    exit(-1); /* just in case */
+	default: /* parrent */
+	    close(pin[1]);
+	    free(apcArgv[2]);
+	    break;
+    }
+    /* only parrent here */
+
+    /* tell all the other ? */
+    for (pCL = pCE->pCLon; (CONSCLIENT *)0 != pCL;
+	    pCL = pCL->pCLnext) {
+	if (pCL == pCLServing)
+	    continue;
+	if (pCL->fcon) {
+	    FilePrint(pCL->fd, FLAGFALSE, "[powercmd k%c by %s\r\n",
+		acIn,
+		pCLServing->acid->string);
+	}
+    }
+    TagLogfile(pCE, "powercmd k%c by %s", acIn,
+		       pCLServing->acid->string);
+
+    if (!SetFlags(pin[0], O_NONBLOCK, 0))
+	    Error("[%s] SetFlags(%d, O_NONBLOCK): %s", pCE->server, pin[0], strerror(errno));
+
+    if ((pCE->powerfile = FileOpenPipe(pin[0], -1)) == (CONSFILE *)0) {
+	Error("[%s] FileOpenPipe(%d,%d) failed: forcing down",
+		pCE->server, pin[0], -1);
+	close(pin[0]);
+	kill(pCE->powerpid, SIGHUP);
+	/* TODO: waitpid ? */
+	pCE->powerpid = 0;
+	return;
+    }
+    Msg("[%s] powercmd started: pid %lu", pCE->server,
+	    (unsigned long)pCE->powerpid);
+    FD_SET(pin[0], &rinit);
+    if (maxfd < pin[0] + 1)
+	maxfd = pin[0] + 1;
+    fflush(stderr);
+    return;
+}
+
+void
+#if PROTOTYPES
+ProcessPower(CONSENT *pCEServing)
+#else
+ProcessPower(pCEServing)
+    CONSENT *pCEServing;
+#endif
+{
+    char line[256];     /* read from child */
+    int i;
+    CONSCLIENT *pCL;
+
+    /* reset errno */
+    errno = 0;
+    while ( ( i = FileRead(pCEServing->powerfile,&line,sizeof(line))) > 0 ) {
+	line[i] = (char) 0; /* terminate the buffer */
+	/* FIXME: to all and the logfile? ? */
+	for (pCL = pCEServing->pCLon; (CONSCLIENT *)0 != pCL; pCL = pCL->pCLnext) {
+	    FilePrint(pCL->fd, FLAGFALSE, "%s", line);
+	}
+    }
+
+    /* check return from read */
+    if ( i == -1 && errno != EAGAIN) {
+	int status;
+	int powerfile;
+	pid_t reaped;
+powerreap_again:
+	Msg("[%s] Reaping powerpid %d", pCEServing->server, pCEServing->powerpid);
+	reaped = waitpid(pCEServing->powerpid, &status, WUNTRACED|WNOHANG);
+	if (reaped == -1) {
+	    Error("[%s] ProcessPower(): waitpid(%d)=%d, errno=%d", pCEServing->server, pCEServing->powerpid, status, strerror(errno));
+		if ( errno != ECHILD ) {
+			Error("[%s] killing", pCEServing->server);
+			kill(pCEServing->powerpid, SIGKILL);
+			goto powerreap_again;
+		}
+	} else {
+	    Debug(2, "[%s] powercmd pid %d, done", pCEServing->server,pCEServing->powerpid);
+	}
+	pCEServing->powerpid = 0;
+
+	powerfile = FileFDNum(pCEServing->powerfile);
+	FD_CLR(powerfile, &rinit);
+	FileClose(&pCEServing->powerfile);
+	pCEServing->powerfile = (CONSFILE *)0;
+
+	for (pCL = pCEServing->pCLon; (CONSCLIENT *)0 != pCL; pCL = pCL->pCLnext) {
+	    FileWrite(pCL->fd, FLAGFALSE, "powercmd done]\r\n", -1);
 	}
     }
 }
@@ -3550,6 +3793,15 @@ DoClientRead(pGE, pCLServing)
 			}
 			continue;
 
+		    case S_POWER:	/* power sequence? */
+			pCLServing->iState = S_NORMAL;
+			if (pCLServing->fwr) {
+			    StartPower(pCLServing, pCEServing, acIn[i]);
+			} else
+			    FileWrite(pCLServing->fd, FLAGFALSE,
+				  "attach to send power]\r\n", -1);
+			continue;
+
 		    case S_HALT1:	/* halt sequence? */
 			pCLServing->iState = S_NORMAL;
 			if (acIn[i] != '?' &&
@@ -3750,6 +4002,18 @@ DoClientRead(pGE, pCLServing)
 					  "info]\r\n", -1);
 				CommandInfo(pGE, pCLServing, pCEServing,
 					    tyme, (char *)0);
+				break;
+
+			    case 'k':	/* power character 1     */
+				if (pCEServing->fronly) {
+				    FileWrite(pCLServing->fd, FLAGFALSE,
+					      "can't power a read-only console]\r\n",
+					      -1);
+				    continue;
+				}
+				pCLServing->iState = S_POWER;
+				FileWrite(pCLServing->fd, FLAGFALSE,
+					  "powercmd ", -1);
 				break;
 
 			    case 'L':
@@ -4672,6 +4936,9 @@ Kiddie(pGE, sfd)
 			DoConsoleRead(pCEServing);
 		    if (FileCanRead(pCEServing->initfile, &rmask, &wmask))
 			DoCommandRead(pCEServing);
+		    if (FileCanRead(pCEServing->powerfile, &rmask, &wmask))
+			ProcessPower(pCEServing);
+
 		    /* fall through to ISFLUSHING for buffered data */
 		case ISFLUSHING:
 		    /* write cofile data */

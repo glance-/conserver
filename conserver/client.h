@@ -51,7 +51,8 @@ typedef enum clientState {
     S_CEXEC,			/* client execing a program                */
     S_REPLAY,			/* set replay length for 'r'               */
     S_PLAYBACK,			/* set replay length for 'p'               */
-    S_NOTE			/* send a note to the logfile              */
+    S_NOTE,				/* send a note to the logfile              */
+    S_POWER				/* we have a power sequence in progress    */
 } CLIENTSTATE;
 
 typedef struct client {		/* Connection Information:              */

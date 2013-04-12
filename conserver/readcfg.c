@@ -575,12 +575,20 @@ DestroyParserDefaultOrConsole(c, ph, pt)
 	free(c->master);
     if (c->exec != (char *)0)
 	free(c->exec);
+    if (c->powerreset != (char *)0)
+	free(c->powerreset);
+    if (c->poweroff != (char *)0)
+	free(c->poweroff);
+    if (c->poweron != (char *)0)
+	free(c->poweron);
     if (c->device != (char *)0)
 	free(c->device);
     if (c->devicesubst != (char *)0)
 	free(c->devicesubst);
     if (c->execsubst != (char *)0)
 	free(c->execsubst);
+    if (c->powersubst != (char *)0)
+	free(c->powersubst);
     if (c->initsubst != (char *)0)
 	free(c->initsubst);
     if (c->logfile != (char *)0)
@@ -731,6 +739,24 @@ ApplyDefault(d, c)
 	if ((c->exec = StrDup(d->exec)) == (char *)0)
 	    OutOfMem();
     }
+    if (d->powerreset != (char *)0) {
+	if (c->powerreset != (char *)0)
+	    free(c->powerreset);
+	if ((c->powerreset = StrDup(d->powerreset)) == (char *)0)
+	    OutOfMem();
+    }
+    if (d->poweroff != (char *)0) {
+	if (c->poweroff != (char *)0)
+	    free(c->poweroff);
+	if ((c->poweroff = StrDup(d->poweroff)) == (char *)0)
+	    OutOfMem();
+    }
+    if (d->poweron != (char *)0) {
+	if (c->poweron != (char *)0)
+	    free(c->poweron);
+	if ((c->poweron = StrDup(d->poweron)) == (char *)0)
+	    OutOfMem();
+    }
     if (d->device != (char *)0) {
 	if (c->device != (char *)0)
 	    free(c->device);
@@ -747,6 +773,12 @@ ApplyDefault(d, c)
 	if (c->execsubst != (char *)0)
 	    free(c->execsubst);
 	if ((c->execsubst = StrDup(d->execsubst)) == (char *)0)
+	    OutOfMem();
+    }
+    if (d->powersubst != (char *)0) {
+	if (c->powersubst != (char *)0)
+	    free(c->powersubst);
+	if ((c->powersubst = StrDup(d->powersubst)) == (char *)0)
 	    OutOfMem();
     }
     if (d->initsubst != (char *)0) {
@@ -933,6 +965,69 @@ ProcessBreak(c, id)
 
 void
 #if PROTOTYPES
+ProcessPowerReset(CONSENT *c, char *id)
+#else
+ProcessPowerReset(c, id)
+    CONSENT *c;
+    char *id;
+#endif
+{
+    if (c->powerreset != (char *)0) {
+	free(c->powerreset);
+	c->powerreset = (char *)0;
+    }
+    if (id == (char *)0 || id[0] == '\000') {
+	return;
+    }
+    if ((c->powerreset = StrDup(id))
+	== (char *)0)
+	OutOfMem();
+}
+
+void
+#if PROTOTYPES
+ProcessPowerOff(CONSENT *c, char *id)
+#else
+ProcessPowerOff(c, id)
+    CONSENT *c;
+    char *id;
+#endif
+{
+    if (c->poweroff != (char *)0) {
+	free(c->poweroff);
+	c->poweroff = (char *)0;
+    }
+    if (id == (char *)0 || id[0] == '\000') {
+	return;
+    }
+    if ((c->poweroff = StrDup(id))
+	== (char *)0)
+	OutOfMem();
+}
+
+void
+#if PROTOTYPES
+ProcessPowerOn(CONSENT *c, char *id)
+#else
+ProcessPowerOn(c, id)
+    CONSENT *c;
+    char *id;
+#endif
+{
+    if (c->poweron != (char *)0) {
+	free(c->poweron);
+	c->poweron = (char *)0;
+    }
+    if (id == (char *)0 || id[0] == '\000') {
+	return;
+    }
+    if ((c->poweron = StrDup(id))
+	== (char *)0)
+	OutOfMem();
+}
+
+void
+#if PROTOTYPES
 DefaultItemBreak(char *id)
 #else
 DefaultItemBreak(id)
@@ -1115,6 +1210,19 @@ DefaultItemExecsubst(id)
     CONDDEBUG((1, "DefaultItemExecsubst(%s) [%s:%d]", id, file, line));
     ProcessSubst(substData, (char **)0, &(parserDefaultTemp->execsubst),
 		 "execsubst", id);
+}
+
+void
+#if PROTOTYPES
+DefaultItemPowersubst(char *id)
+#else
+DefaultItemPowersubst(id)
+    char *id;
+#endif
+{
+    CONDDEBUG((1, "DefaultItemPowersubst(%s) [%s:%d]", id, file, line));
+    ProcessSubst(substData, (char **)0, &(parserDefaultTemp->powersubst),
+		 "powersubst", id);
 }
 
 void
@@ -1584,6 +1692,42 @@ DefaultItemInitcmd(id)
 {
     CONDDEBUG((1, "DefaultItemInitcmd(%s) [%s:%d]", id, file, line));
     ProcessInitcmd(parserDefaultTemp, id);
+}
+
+void
+#if PROTOTYPES
+DefaultItemPowerReset(char *id)
+#else
+DefaultItemPowerReset(id)
+    char *id;
+#endif
+{
+    CONDDEBUG((1, "DefaultItemPowerReset(%s) [%s:%d]", id, file, line));
+    ProcessPowerReset(parserDefaultTemp, id);
+}
+
+void
+#if PROTOTYPES
+DefaultItemPowerOff(char *id)
+#else
+DefaultItemPowerOff(id)
+    char *id;
+#endif
+{
+    CONDDEBUG((1, "DefaultItemPowerOff(%s) [%s:%d]", id, file, line));
+    ProcessPowerOff(parserDefaultTemp, id);
+}
+
+void
+#if PROTOTYPES
+DefaultItemPowerOn(char *id)
+#else
+DefaultItemPowerOn(id)
+    char *id;
+#endif
+{
+    CONDDEBUG((1, "DefaultItemPowerOn(%s) [%s:%d]", id, file, line));
+    ProcessPowerOn(parserDefaultTemp, id);
 }
 
 void
@@ -2521,6 +2665,16 @@ ConsoleEnd()
 	    invalid = 1;
 	    break;
     }
+    if (parserConsoleTemp->powersubst != (char *)0 && (
+	parserConsoleTemp->powerreset != (char *)0 ||
+	parserConsoleTemp->poweroff != (char *)0 ||
+	parserConsoleTemp->poweron != (char *)0 )) {
+	if (CheckSubst("powersubst", parserConsoleTemp->powersubst)) {
+	    free(parserConsoleTemp->powersubst);
+	    parserConsoleTemp->powersubst = (char *)0;
+	}
+    }
+
     if (parserConsoleTemp->initsubst != (char *)0 &&
 	parserConsoleTemp->initcmd != (char *)0) {
 	if (CheckSubst("initsubst", parserConsoleTemp->initsubst)) {
@@ -2900,6 +3054,27 @@ ConsoleAdd(c)
 	    if (pCEmatch->initpid != 0)
 		closeMatch = 0;
 	}
+	if (pCEmatch->powerreset != (char *)0 && c->powerreset != (char *)0) {
+	    if (strcmp(pCEmatch->powerreset , c->powerreset) != 0)
+		SwapStr(&pCEmatch->powerreset, &c->powerreset);
+	} else if (pCEmatch->powerreset != (char *)0 ||
+		   c->powerreset != (char *)0) {
+		SwapStr(&pCEmatch->powerreset, &c->powerreset);
+        }
+	if (pCEmatch->poweroff != (char *)0 && c->poweroff != (char *)0) {
+	    if (strcmp(pCEmatch->poweroff , c->poweroff) != 0)
+		SwapStr(&pCEmatch->poweroff, &c->poweroff);
+	} else if (pCEmatch->poweroff != (char *)0 ||
+		   c->poweroff != (char *)0) {
+		SwapStr(&pCEmatch->poweroff, &c->poweroff);
+        }
+	if (pCEmatch->poweron != (char *)0 && c->poweron != (char *)0) {
+	    if (strcmp(pCEmatch->poweron , c->poweron) != 0)
+		SwapStr(&pCEmatch->poweron, &c->poweron);
+	} else if (pCEmatch->poweron != (char *)0 ||
+		   c->poweron != (char *)0) {
+		SwapStr(&pCEmatch->poweron, &c->poweron);
+        }
 
 	switch (pCEmatch->type) {
 	    case EXEC:
@@ -3186,6 +3361,16 @@ ConsoleDestroy()
 	if (c->initcmd != (char *)0 && c->initsubst != (char *)0)
 	    ProcessSubst(substData, &(c->initcmd), (char **)0, (char *)0,
 			 c->initsubst);
+
+	/* go ahead and do the power subst */
+	if (c->powersubst != (char *)0) {
+	    ProcessSubst(substData, &(c->powerreset), (char **)0, (char *)0,
+			 c->powersubst);
+	    ProcessSubst(substData, &(c->poweroff), (char **)0, (char *)0,
+			 c->powersubst);
+	    ProcessSubst(substData, &(c->poweron), (char **)0, (char *)0,
+			 c->powersubst);
+	}
 
 	/* go ahead and do the '&' substitution */
 	if (c->logfile != (char *)0) {
@@ -3536,6 +3721,19 @@ ConsoleItemExecsubst(id)
 
 void
 #if PROTOTYPES
+ConsoleItemPowersubst(char *id)
+#else
+ConsoleItemPowersubst(id)
+    char *id;
+#endif
+{
+    CONDDEBUG((1, "ConsoleItemPowersubst(%s) [%s:%d]", id, file, line));
+    ProcessSubst(substData, (char **)0, &(parserConsoleTemp->powersubst),
+		 "powersubst", id);
+}
+
+void
+#if PROTOTYPES
 ConsoleItemUdssubst(char *id)
 #else
 ConsoleItemUdssubst(id)
@@ -3678,6 +3876,42 @@ ConsoleItemInitcmd(id)
 {
     CONDDEBUG((1, "ConsoleItemInitcmd(%s) [%s:%d]", id, file, line));
     ProcessInitcmd(parserConsoleTemp, id);
+}
+
+void
+#if PROTOTYPES
+ConsoleItemPowerReset(char *id)
+#else
+ConsoleItemPowerReset(id)
+    char *id;
+#endif
+{
+    CONDDEBUG((1, "ConsoleItemPower(%s) [%s:%d]", id, file, line));
+    ProcessPowerReset(parserConsoleTemp, id);
+}
+
+void
+#if PROTOTYPES
+ConsoleItemPowerOff(char *id)
+#else
+ConsoleItemPowerOff(id)
+    char *id;
+#endif
+{
+    CONDDEBUG((1, "ConsoleItemPowerOff(%s) [%s:%d]", id, file, line));
+    ProcessPowerOff(parserConsoleTemp, id);
+}
+
+void
+#if PROTOTYPES
+ConsoleItemPowerOn(char *id)
+#else
+ConsoleItemPowerOn(id)
+    char *id;
+#endif
+{
+    CONDDEBUG((1, "ConsoleItemPowerOn(%s) [%s:%d]", id, file, line));
+    ProcessPowerOn(parserConsoleTemp, id);
 }
 
 void
@@ -4888,6 +5122,10 @@ ITEM keyDefault[] = {
     {"port", DefaultItemPort},
     {"portbase", DefaultItemPortbase},
     {"portinc", DefaultItemPortinc},
+    {"powerreset", DefaultItemPowerReset},
+    {"poweroff", DefaultItemPowerOff},
+    {"poweron", DefaultItemPowerOn},
+    {"powersubst", DefaultItemPowersubst},
     {"protocol", DefaultItemProtocol},
     {"replstring", DefaultItemReplstring},
     {"ro", DefaultItemRo},
@@ -4927,6 +5165,10 @@ ITEM keyConsole[] = {
     {"port", ConsoleItemPort},
     {"portbase", ConsoleItemPortbase},
     {"portinc", ConsoleItemPortinc},
+    {"powerreset", ConsoleItemPowerReset},
+    {"poweroff", ConsoleItemPowerOff},
+    {"poweron", ConsoleItemPowerOn},
+    {"powersubst", ConsoleItemPowersubst},
     {"protocol", ConsoleItemProtocol},
     {"replstring", ConsoleItemReplstring},
     {"ro", ConsoleItemRo},

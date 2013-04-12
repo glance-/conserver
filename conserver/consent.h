@@ -102,6 +102,12 @@ typedef struct consent {	/* console information                  */
     /* type == EXEC */
     char *exec;			/* exec command                         */
     char *execsubst;		/* exec substitution pattern            */
+    char *powerreset;		/* powerreset command                   */
+    char *poweroff;		/* poweroff command                     */
+    char *poweron;		/* poweron command                      */
+    char *powersubst;		/* power substitution pattern           */
+    pid_t powerpid;		/* pid of powercmd command              */
+    CONSFILE *powerfile;	/* the command run on power             */
     uid_t execuid;		/* user to run exec as                  */
     gid_t execgid;		/* group to run exec as                 */
     /* type == UDS */

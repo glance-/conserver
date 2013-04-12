@@ -817,6 +817,9 @@ Master()
 	      strerror(errno));
 	return;
     }
+    /* Allow everyone to connect, but we later auth them via SO_PEERCRED */
+    chmod(master_port.sun_path,0666);
+
 #else
     master_port.sin_family = AF_INET;
     master_port.sin_addr.s_addr = bindAddr;

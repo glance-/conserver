@@ -1599,6 +1599,40 @@ CheckPasswd(pCL, pw_string)
     int iLine = 0;
     char *this_pw, *user;
 
+#if USE_UNIX_DOMAIN_SOCKETS
+#ifdef _AIX
+#define ucred       peercred_struct
+#define SO_PEERCRED SO_PEERID
+#define UID         euid
+#else
+#define UID         uid
+#endif
+    struct ucred client_cred;
+    socklen_t client_cred_len = sizeof(client_cred);
+    memset(&client_cred, 0, sizeof(client_cred));
+
+    if ( (iLine = getsockopt(pCL->fd->fd, SOL_SOCKET, SO_PEERCRED,
+		&client_cred, &client_cred_len)) == -1 ) {
+	Error("CheckPasswd(): getsockopt(SO_PEERCRED) failed: %s",
+		strerror(iLine));
+    } else if ( client_cred.pid != 0 ) {
+	/* Does pCL->username->string and client_cred.uid match ? */
+	struct passwd *pwd = (struct passwd *)0;
+
+	/* we allow root to impersonate anyone */
+	if ( client_cred.UID == 0 )
+	     return AUTH_SUCCESS;
+
+	if ( (pwd = getpwnam(pCL->username->string)) != NULL ) {
+	    if ( pwd->pw_uid == client_cred.UID ) {
+		Verbose("user %s authenticated", pCL->username->string);
+		return AUTH_SUCCESS;
+	    }
+	}
+    }
+#undef UID /* remove uid/euid define for _AIX */
+#endif
+
     if ((fp = fopen(config->passwdfile, "r")) == (FILE *)0) {
 	if (CheckPass(pCL->username->string, pw_string) == AUTH_SUCCESS) {
 	    Verbose("user %s authenticated", pCL->acid->string);
@@ -5255,6 +5289,10 @@ Spawn(pGE, msfd)
 	      strerror(errno));
 	Bye(EX_OSERR);
     }
+
+    /* Allow everyone to connect, but we later auth them via SO_PEERCRED */
+    chmod(lstn_port.sun_path,0666);
+
     pGE->port = pGE->id;
 #else
     lstn_port.sin_family = AF_INET;
